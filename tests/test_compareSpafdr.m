@@ -81,18 +81,19 @@ relErr = median(abs(result_sid.Response - resp_spafdr) ./ max(abs(resp_spafdr), 
 assert(relErr < 0.05, ...
     'Test 3: coarse resolution response relErr=%.6f should be <5%%', relErr);
 
-%% Test 4: Time-series spectrum
+%% Test 4: Time-series spectrum (explicit resolution to avoid default mismatch)
 rng(24);
 N = 2000;
 e = randn(N, 1);
 y = filter(1, [1 -0.6 0.3], e);
 
 w = (1:128)' * pi / 128;
+R_res = 0.3;  % explicit resolution
 
-result_sid = sidFreqBTFDR(y, [], 'Frequencies', w);
+result_sid = sidFreqBTFDR(y, [], 'Resolution', R_res, 'Frequencies', w);
 
 data = iddata(y, [], Ts);
-G_spafdr = spafdr(data, [], w);
+G_spafdr = spafdr(data, R_res, w);
 spec_spafdr = real(squeeze(G_spafdr.SpectrumData));
 
 relErr = median(abs(real(result_sid.NoiseSpectrum) - spec_spafdr) ./ max(abs(spec_spafdr), 1e-10));

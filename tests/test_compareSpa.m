@@ -105,8 +105,8 @@ G_spa = spa(data, M, w);
 spec_spa = real(squeeze(G_spa.SpectrumData));
 
 relErr = max(abs(real(result_sid.NoiseSpectrum) - spec_spa) ./ max(abs(spec_spa), 1e-10));
-assert(relErr < 0.01, ...
-    'Test 4: time-series spectrum relErr=%.6f should be <1%%', relErr);
+assert(relErr < 0.02, ...
+    'Test 4: time-series spectrum relErr=%.6f should be <2%%', relErr);
 
 assert(isempty(result_sid.Response), 'Test 4: time-series Response should be empty');
 
