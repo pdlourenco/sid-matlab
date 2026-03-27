@@ -21,3 +21,21 @@ jobs:
 
       - name: Run test suite
         run: xvfb-run octave --no-gui --eval "run('tests/runAllTests.m')"
+
+  matlab-tests:
+    name: Run tests (MATLAB)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up MATLAB with System Identification Toolbox
+        uses: matlab-actions/setup-matlab@v2
+        with:
+          products: System_Identification_Toolbox
+
+      - name: Run test suite
+        uses: matlab-actions/run-command@v2
+        with:
+          command: run('tests/runAllTests.m')
