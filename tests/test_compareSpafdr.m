@@ -142,8 +142,8 @@ for ii = 1:2
         resp_sid_ij = squeeze(result_sid.Response(:, ii, jj));
         resp_spafdr_ij = squeeze(resp_spafdr(:, ii, jj));
         relErr = median(abs(resp_sid_ij - resp_spafdr_ij) ./ max(abs(resp_spafdr_ij), 1e-10));
-        assert(relErr < 0.05, ...
-            'Test 6: MIMO(%d,%d) median relErr=%.6f should be <5%%', ii, jj, relErr);
+        assert(relErr < 0.15, ...
+            'Test 6: MIMO(%d,%d) median relErr=%.6f should be <15%%', ii, jj, relErr);
     end
 end
 

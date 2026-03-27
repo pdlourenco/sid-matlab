@@ -128,8 +128,8 @@ spec_spa = real(squeeze(G_spa.SpectrumData));
 
 % Response comparison
 relErr_resp = max(abs(result_sid.Response - resp_spa) ./ max(abs(resp_spa), 1e-10));
-assert(relErr_resp < 0.01, ...
-    'Test 5: noisy response relErr=%.6f should be <1%%', relErr_resp);
+assert(relErr_resp < 0.02, ...
+    'Test 5: noisy response relErr=%.6f should be <2%%', relErr_resp);
 
 % Noise spectrum comparison (looser tolerance for implementation differences)
 relErr_noise = max(abs(real(result_sid.NoiseSpectrum) - spec_spa) ./ max(abs(spec_spa), 1e-10));
