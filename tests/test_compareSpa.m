@@ -164,26 +164,26 @@ for ch = 1:2
         'Test 6: MIMO channel %d response relErr=%.6f should be <1%%', ch, relErr);
 end
 
-% Noise spectrum comparison (2x2 per frequency) - collect all relErrs first
+% Noise spectrum comparison.
+% spa treats MIMO as independent SISOs so its SpectrumData has zero
+% off-diagonal elements; only compare the diagonal channels against spa.
 noise_sid = result_sid.NoiseSpectrum;
-allRelErr = nan(2, 2);
-for ii = 1:2
-    for jj = 1:2
-        ns_sid_ij = real(squeeze(noise_sid(:, ii, jj)));
-        ns_spa_ij = spec_spa(:, ii, jj);
-        allRelErr(ii, jj) = max(abs(ns_sid_ij - ns_spa_ij) ./ max(abs(ns_spa_ij), 1e-10));
-    end
+for ch = 1:2
+    ns_sid_ch = real(squeeze(noise_sid(:, ch, ch)));
+    ns_spa_ch = spec_spa(:, ch, ch);
+    relErr = max(abs(ns_sid_ch - ns_spa_ch) ./ max(abs(ns_spa_ch), 1e-10));
+    assert(relErr < 0.10, ...
+        'Test 6: MIMO noise diagonal (%d,%d) relErr=%.4f should be <10%%', ch, ch, relErr);
 end
-mean_sid11 = mean(real(squeeze(noise_sid(:, 1, 1))));
-mean_spa11 = mean(spec_spa(:, 1, 1));
-spaSize = size(G_spa.SpectrumData);
-fprintf('::notice title=Test6_relErr::allRelErr=[%.3f %.3f; %.3f %.3f] sid11=%.3e spa11=%.3e\n', ...
-    allRelErr(1,1), allRelErr(1,2), allRelErr(2,1), allRelErr(2,2), ...
-    mean_sid11, mean_spa11);
-assert(all(allRelErr(:) < 0.10), ...
-    'Test 6: MIMO noise relErr [11=%.2f 12=%.2f 21=%.2f 22=%.2f] sid11_mean=%.3e spa11_mean=%.3e spaSize=%dx%dx%d', ...
-    allRelErr(1,1), allRelErr(1,2), allRelErr(2,1), allRelErr(2,2), ...
-    mean_sid11, mean_spa11, spaSize(1), spaSize(2), spaSize(3));
+% Off-diagonal: verify noise spectral matrix is positive semi-definite
+% (Cauchy-Schwarz: det([PhiV11, PhiV12; PhiV21, PhiV22]) >= 0)
+% Allow small negative due to finite-sample estimation error
+tol_psd = 0.01;  % finite-sample estimation errors allow small violations
+for k = 1:length(w)
+    P = real(reshape(noise_sid(k, :, :), 2, 2));
+    assert(det(P) >= -tol_psd, ...
+        'Test 6: noise matrix not PSD at freq %d: det=%.4e', k, det(P));
+end
 
 %% Test 7: Non-unit sample time
 rng(70);
