@@ -110,10 +110,10 @@ function result = sidFreqBT(y, u, varargin)
     W = sidHannWin(M);                            % (M+1) x 1, for lags 0..M
 
     % ---- Spectral estimates ----
-    PhiY = sidWindowedDFT(Ryy, W, freqs, useFFT); % (nf x ny x ny)
+    PhiY = sidWindowedDFT(Ryy, W, freqs, useFFT, Ryy); % (nf x ny x ny)
 
     if ~isTimeSeries
-        PhiU  = sidWindowedDFT(Ruu, W, freqs, useFFT); % (nf x nu x nu)
+        PhiU  = sidWindowedDFT(Ruu, W, freqs, useFFT, Ruu); % (nf x nu x nu)
         PhiYU = sidWindowedDFT(Ryu, W, freqs, useFFT, Ruy); % (nf x ny x nu)
     end
 
