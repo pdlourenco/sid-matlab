@@ -30,6 +30,10 @@ sidSpectrumPlot(result);
 | `sidFreqETFE` | Empirical transfer function estimate (replaces `etfe`) | Implemented |
 | `sidBodePlot` | Bode diagram with confidence bands | Implemented |
 | `sidSpectrumPlot` | Power spectrum plot with confidence bands | Implemented |
+| `sidFreqBTMap` | Time-varying frequency response map | Implemented |
+| `sidSpectrogram` | Short-time FFT spectrogram | Implemented |
+| `sidMapPlot` | Time-frequency color map for `sidFreqBTMap` results | Implemented |
+| `sidSpectrogramPlot` | Spectrogram color map | Implemented |
 
 ## Requirements
 
