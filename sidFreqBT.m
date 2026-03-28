@@ -110,10 +110,10 @@ function result = sidFreqBT(y, u, varargin)
     W = sidHannWin(M);                            % (M+1) x 1, for lags 0..M
 
     % ---- Spectral estimates ----
-    PhiY = sidWindowedDFT(Ryy, W, freqs, useFFT); % (nf x ny x ny)
+    PhiY = sidWindowedDFT(Ryy, W, freqs, useFFT, Ryy); % (nf x ny x ny)
 
     if ~isTimeSeries
-        PhiU  = sidWindowedDFT(Ruu, W, freqs, useFFT); % (nf x nu x nu)
+        PhiU  = sidWindowedDFT(Ruu, W, freqs, useFFT, Ruu); % (nf x nu x nu)
         PhiYU = sidWindowedDFT(Ryu, W, freqs, useFFT, Ruy); % (nf x ny x nu)
     end
 
@@ -134,9 +134,9 @@ function result = sidFreqBT(y, u, varargin)
         G = zeros(nf, ny, nu);
         PhiV = zeros(nf, ny, ny);
         for k = 1:nf
-            PhiU_k = squeeze(PhiU(k, :, :));
-            PhiYU_k = squeeze(PhiYU(k, :, :));
-            PhiY_k = squeeze(PhiY(k, :, :));
+            PhiU_k = reshape(PhiU(k, :, :), nu, nu);
+            PhiYU_k = reshape(PhiYU(k, :, :), ny, nu);
+            PhiY_k = reshape(PhiY(k, :, :), ny, ny);
             G(k, :, :) = PhiYU_k / PhiU_k;
             PhiV(k, :, :) = PhiY_k - PhiYU_k / PhiU_k * PhiYU_k';
         end
