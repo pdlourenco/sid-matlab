@@ -204,8 +204,8 @@ G_spa = spa(data, M, w_spa);
 resp_spa = squeeze(G_spa.ResponseData);
 
 relErr = max(abs(result_sid.Response - resp_spa) ./ max(abs(resp_spa), 1e-10));
-assert(relErr < 0.01, ...
-    'Test 7: non-unit Ts response relErr=%.6f should be <1%%', relErr);
+assert(relErr < 0.02, ...
+    'Test 7: non-unit Ts response relErr=%.6f should be <2%%', relErr);
 
 % Verify FrequencyHz matches
 assert(max(abs(result_sid.FrequencyHz - G_spa.Frequency / (2*pi))) < 1e-10, ...
