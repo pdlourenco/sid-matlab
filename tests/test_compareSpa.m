@@ -164,17 +164,23 @@ for ch = 1:2
         'Test 6: MIMO channel %d response relErr=%.6f should be <1%%', ch, relErr);
 end
 
-% Noise spectrum comparison (2x2 per frequency)
+% Noise spectrum comparison (2x2 per frequency) - collect all relErrs first
 noise_sid = result_sid.NoiseSpectrum;
+allRelErr = nan(2, 2);
 for ii = 1:2
     for jj = 1:2
-        ns_sid = real(squeeze(noise_sid(:, ii, jj)));
-        ns_spa = spec_spa(:, ii, jj);
-        relErr = max(abs(ns_sid - ns_spa) ./ max(abs(ns_spa), 1e-10));
-        assert(relErr < 0.10, ...
-            'Test 6: MIMO noise(%d,%d) relErr=%.6f should be <10%%', ii, jj, relErr);
+        ns_sid_ij = real(squeeze(noise_sid(:, ii, jj)));
+        ns_spa_ij = spec_spa(:, ii, jj);
+        allRelErr(ii, jj) = max(abs(ns_sid_ij - ns_spa_ij) ./ max(abs(ns_spa_ij), 1e-10));
     end
 end
+mean_sid11 = mean(real(squeeze(noise_sid(:, 1, 1))));
+mean_spa11 = mean(spec_spa(:, 1, 1));
+spaSize = size(G_spa.SpectrumData);
+assert(all(allRelErr(:) < 0.10), ...
+    'Test 6: MIMO noise relErr [11=%.2f 12=%.2f 21=%.2f 22=%.2f] sid11_mean=%.3e spa11_mean=%.3e spaSize=%dx%dx%d', ...
+    allRelErr(1,1), allRelErr(1,2), allRelErr(2,1), allRelErr(2,2), ...
+    mean_sid11, mean_spa11, spaSize(1), spaSize(2), spaSize(3));
 
 %% Test 7: Non-unit sample time
 rng(70);
