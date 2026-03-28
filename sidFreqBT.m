@@ -134,9 +134,9 @@ function result = sidFreqBT(y, u, varargin)
         G = zeros(nf, ny, nu);
         PhiV = zeros(nf, ny, ny);
         for k = 1:nf
-            PhiU_k = squeeze(PhiU(k, :, :));
-            PhiYU_k = squeeze(PhiYU(k, :, :));
-            PhiY_k = squeeze(PhiY(k, :, :));
+            PhiU_k = reshape(PhiU(k, :, :), nu, nu);
+            PhiYU_k = reshape(PhiYU(k, :, :), ny, nu);
+            PhiY_k = reshape(PhiY(k, :, :), ny, ny);
             G(k, :, :) = PhiYU_k / PhiU_k;
             PhiV(k, :, :) = PhiY_k - PhiYU_k / PhiU_k * PhiYU_k';
         end
