@@ -44,7 +44,7 @@ function result = sidFreqBTFDR(y, u, varargin)
 %
 %   ALGORITHM:
 %     For each frequency w_k:
-%       1. Determine local window size M_k = ceil(2*pi / R_k).
+%       1. Determine local window size M_k = round(2*pi / R_k).
 %       2. Compute Hann window W_{M_k} and biased covariances up to lag M_k.
 %       3. Compute windowed spectral estimates via direct DFT.
 %       4. Form G(w_k) and Phi_v(w_k) as in sidFreqBT.
@@ -146,7 +146,7 @@ function result = sidFreqBTFDR(y, u, varargin)
     end
 
     % ---- Resolution to window size ----
-    Mk = ceil(2 * pi ./ R);
+    Mk = round(2 * pi ./ R);
     Mk = max(Mk, 2);                   % M >= 2
     Mk = min(Mk, floor(N / 2));        % M <= N/2
 
