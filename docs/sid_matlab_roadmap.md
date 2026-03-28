@@ -21,6 +21,13 @@ sid  [Domain]  [Method/Variant]
 | **`sidFreqETFE`** | `etfe` | Empirical transfer function estimate |
 | **`sidFreqBTMap`** | — | Time-varying frequency response map (LTV analysis) |
 | **`sidSpectrogram`** | `spectrogram` | Short-time FFT spectrogram |
+| **`sidLTVdisc`** | — | Discrete LTV state-space identification (COSMIC) |
+| **`sidLTVdiscTune`** | — | Lambda tuning (validation-based and frequency-response) |
+| **`sidLTVdiscFrozen`** | — | Frozen transfer function G(ω,k) from A(k), B(k) |
+| **`sidLTVdiscInit`** | — | Initialize recursive/online COSMIC estimator |
+| **`sidLTVdiscUpdate`** | — | Process one time step (filtered estimate) |
+| **`sidLTVdiscSmooth`** | — | Backward pass over window (smoothed estimates) |
+| **`sidLTVdiscIO`** | — | Output-only LTV identification (two-stage) |
 | `sidTfARX` | `arx` | Transfer function, ARX model |
 | `sidTfARMAX` | `armax` | Transfer function, ARMAX model |
 | `sidSsN4SID` | `n4sid` | State-space, N4SID subspace method |
@@ -59,6 +66,13 @@ sid/
 ├── sidFreqETFE.m            % Empirical transfer function estimate
 ├── sidFreqBTMap.m           % Time-varying frequency response map
 ├── sidSpectrogram.m         % Short-time FFT spectrogram
+├── sidLTVdisc.m             % Discrete LTV state-space identification
+├── sidLTVdiscTune.m         % Lambda tuning via validation or frequency response
+├── sidLTVdiscFrozen.m       % Frozen transfer function from A(k), B(k)
+├── sidLTVdiscInit.m         % Initialize recursive COSMIC estimator
+├── sidLTVdiscUpdate.m       % Online: process one time step
+├── sidLTVdiscSmooth.m       % Windowed backward pass for smoothed estimates
+├── sidLTVdiscIO.m           % Output-only LTV identification (two-stage)
 ├── sidBodePlot.m            % Bode diagram with confidence bands
 ├── sidSpectrumPlot.m        % Power spectrum plot
 ├── sidMapPlot.m             % Time-frequency color map
@@ -74,6 +88,7 @@ sid/
 │   ├── testSidFreqBTFDR.m
 │   ├── testSidFreqETFE.m
 │   ├── testSidFreqBTMap.m
+│   ├── testSidLTVdisc.m
 │   ├── testSidUncertainty.m
 │   ├── testSidEdgeCases.m
 │   ├── testSidOctave.m
@@ -204,17 +219,91 @@ result.DataLength          % N (number of samples used)
   - Alignment test: verify time axes match between `sidSpectrogram` and `sidFreqBTMap`
   - Compare `sidSpectrogram` output to MathWorks `spectrogram` (if available)
 
-### Phase 8 — `sidFreqETFE` and `sidFreqBTFDR` (~4 days)
+### Phase 8 — `sidLTVdisc` Base (~5 days)
+
+- Integrate existing COSMIC MATLAB implementation into `sid` conventions
+- `sidLTVdisc.m`:
+  - COSMIC forward-backward pass (closed-form block tridiagonal solver)
+  - Multi-trajectory support (same horizon)
+  - Preconditioning option
+  - L-curve automatic lambda selection
+  - Manual scalar or per-step lambda
+  - Returns struct with A(k), B(k), cost breakdown
+- `sidLTVdiscTune.m`:
+  - Grid search over lambda candidates
+  - Evaluate trajectory prediction loss on validation data
+  - Return best result, best lambda, all losses
+- Tests:
+  - Known LTI system: verify A(k), B(k) are constant
+  - Known LTV system: compare to ground truth
+  - Multi-trajectory vs. single-trajectory accuracy
+  - L-curve lambda selection: verify reasonable choice
+  - Preconditioning and uniqueness condition checks
+
+### Phase 8a — Variable-Length Trajectories (~2 days)
+
+- Extend input parsing to accept cell arrays of different-length trajectories
+- Modify `buildDataMatrices` to handle per-step active trajectory sets
+- Normalization: `1/sqrt(|L(k)|)` per step
+- Tests: mix of short and long trajectories, verify identical to uniform when all same length
+
+### Phase 8b — Bayesian Uncertainty (~4 days)
+
+**Theory:** `docs/cosmic_uncertainty_derivation.md`
+
+- Implement uncertainty backward pass reusing stored Λ_k matrices:
+  - `P(N-1) = Λ_{N-1}⁻¹`
+  - `P(k) = Λ_k⁻¹ + G_k P(k+1) G_k^T` where `G_k = λ_{k+1} Λ_k⁻¹`
+  - Same O(N(p+q)³) cost as COSMIC itself
+- Noise variance estimation: `σ̂² = 2h(C*) / (NLp)`
+- Add `AStd`, `BStd`, `Covariance`, `NoiseVariance` to result struct
+- `sidLTVdiscFrozen.m`: compute `G(ω, k) = (zI - A(k))⁻¹ B(k)` with Jacobian-propagated uncertainty
+- Monte Carlo validation: 500 realizations, verify empirical std matches posterior
+- Integration with `sidBodePlot` for time-varying Bode with confidence bands
+
+### Phase 8c — Online/Recursive COSMIC (~4 days)
+
+**Theory:** `docs/cosmic_online_recursion.md`
+
+Key insight: COSMIC forward pass = Kalman filter on parameter evolution; backward pass = RTS smoother. Three operating modes:
+
+- `sidLTVdiscInit.m`: initialize recursive estimator (Λ₀, Y₀)
+- `sidLTVdiscUpdate.m`: process one time step in O((p+q)³):
+  - One forward pass step: `Λ_k`, `Y_k` from new data + previous state
+  - Returns filtered estimate `Y_k` and filtered uncertainty `Λ_k⁻¹`
+- `sidLTVdiscSmooth.m`: backward pass over stored window for smoothed estimates
+- Tests:
+  - Filtered estimates converge to smoothed as window grows
+  - Filtered uncertainty ≥ smoothed uncertainty at every step
+  - Process data one-at-a-time, compare final result to batch COSMIC
+  - Timing: O(1) per step regardless of history length
+
+### Phase 8d — Lambda Tuning via Frequency Response (~4 days)
+
+- Extend `sidLTVdiscTune` with `'Method', 'frequency'` option
+- Frozen transfer function vs. `sidFreqBTMap` comparison
+- Mahalanobis consistency scoring at each (ω, t) grid point
+- Select largest λ where ≥90% of grid points consistent at 95% level
+- Depends on: Phase 7 (`sidFreqBTMap`) and Phase 8b (uncertainty)
+- Tests: known LTV system, verify selected lambda is reasonable
+
+### Phase 8e — Output-Only Estimation (~3 days)
+
+- `sidLTVdiscIO.m`: two-stage (initial LTI observer → state reconstruction → COSMIC)
+- Warning to user about approximate state estimates
+- Tests: known system with measured outputs only, compare to full-state COSMIC
+
+### Phase 9 — `sidFreqETFE` and `sidFreqBTFDR` (~4 days)
 
 - `sidFreqETFE.m` — FFT ratio with optional smoothing
 - `sidFreqBTFDR.m` — frequency-dependent window size
 - Tests for both
 
-### Phase 9 — Validation + Release (~4 days)
+### Phase 10 — Validation + Release (~4 days)
 
 - `exampleCompare.m` — head-to-head vs. MathWorks `spa`
 - Octave CI on GitHub Actions
-- Edge case hardening (short data, complex, single-precision)
+- Edge case hardening
 - README, examples, MATLAB File Exchange submission
 
 ---
@@ -230,8 +319,14 @@ result.DataLength          % N (number of samples used)
 | 5. Plotting | 2 days | 13 days |
 | 6. MIMO | 4 days | 17 days |
 | 7. sidFreqBTMap + sidSpectrogram | 5 days | 22 days |
-| 8. ETFE + BTFDR | 4 days | 26 days |
-| 9. Validation + release | 4 days | 30 days |
+| 8. sidLTVdisc base | 5 days | 27 days |
+| 8a. Variable-length trajectories | 2 days | 29 days |
+| 8b. Bayesian uncertainty | 4 days | 33 days |
+| 8c. Online/recursive COSMIC | 4 days | 37 days |
+| 8d. Lambda via frequency response | 4 days | 41 days |
+| 8e. Output-only (two-stage) | 3 days | 44 days |
+| 9. ETFE + BTFDR | 4 days | 48 days |
+| 10. Validation + release | 4 days | 52 days |
 
 ---
 
@@ -251,7 +346,11 @@ result.DataLength          % N (number of samples used)
 - Frequency-domain input data
 - Continuous-time models
 - `maxSize` data segmentation
-- Custom window functions (Hann only)
+- Custom window functions (Hann only for sidFreqBT)
 - idfrd-compatible class
 - Python / Julia ports
 - C reference implementation
+- EM-style or direct output equation LTV identification
+- Alternative regularization norms (non-squared L2, L1 total variation)
+- Alternative LTV algorithms (TVERA, TVOKID) — `'Algorithm'` parameter is ready
+- GCV lambda selection
