@@ -73,16 +73,15 @@ end
 lambda_small = 1e-8;
 result = sidLTVdisc(X, U, 'Lambda', lambda_small, 'Uncertainty', true);
 
-% Reconstruct D(k)'*D(k) and check P(k) ~ (D'D)^{-1}
+% Reconstruct unscaled D(k)'*D(k) and check P(k) ~ (D_unscaled'D_unscaled)^{-1}
 d = p + q;
-sqrtN = sqrt(N);
 for k = 1:N
-    Dk = [reshape(X(k, :, :), p, L)', reshape(U(k, :, :), q, L)'] / sqrtN;
-    DtD = Dk' * Dk;
+    Dk_unscaled = [reshape(X(k, :, :), p, L)', reshape(U(k, :, :), q, L)'];
+    DtD = Dk_unscaled' * Dk_unscaled;
     P_ols = inv(DtD);  %#ok<MINV>
     Pk = result.P(:, :, k);
     relErr = norm(Pk - P_ols, 'fro') / norm(P_ols, 'fro');
-    assert(relErr < 0.1, 'No-reg limit: P(%d) should be ~(D''D)^{-1}, relErr=%.3f', k, relErr);
+    assert(relErr < 0.1, 'No-reg limit: P(%d) should be ~(D_u''D_u)^{-1}, relErr=%.3f', k, relErr);
 end
 fprintf('  Test 4 passed: no-regularization limit matches OLS covariance.\n');
 
@@ -297,7 +296,7 @@ p = 2; q = 1; N = 15; L = 30;
 A_true = [0.9 0.1; -0.1 0.8]; B_true = [0.5; 0.3];
 sigma = 0.05;
 Sigma_true = sigma^2 * eye(p);
-lambda_val = 0.001;
+lambda_val = 1;
 nMC = 200;
 
 A_samples = zeros(p, p, N, nMC);

@@ -163,8 +163,11 @@ function result = sidLTVdisc(X, U, varargin)
     if doUncertainty
         d = p + q;
 
-        % Backward recursion for P(k) = [A^{-1}]_{kk}
-        P = uncertaintyBackwardPass(Lbd, S, lambda, N, d);
+        % Compute P(k) = [A_unscaled^{-1}]_{kk} using the unscaled Hessian.
+        % COSMIC normalizes data by 1/sqrt(N), so the scaled Hessian uses
+        % D_s'D_s = D'D/N. The posterior Cov(vec(C(k))) = Sigma x P(k)
+        % requires the unscaled Hessian where D'D appears without the 1/N.
+        P = uncertaintyBackwardPass(S, lambda, N, d);
 
         % Noise covariance
         noiseCovProvided = ~ischar(noiseCov);
@@ -631,33 +634,53 @@ function bestLambda = lcurveLambda(D, Xl, N, p, q, doPrecondition)
 end
 
 
-function P = uncertaintyBackwardPass(Lbd, S, lambda, N, d)
-%UNCERTAINTYBACKWARDPASS Compute P(k) = [A^{-1}]_{kk}.
+function P = uncertaintyBackwardPass(S_scaled, lambda, N, d)
+%UNCERTAINTYBACKWARDPASS Compute P(k) = [A_unscaled^{-1}]_{kk}.
 %
-%   Uses both left Schur complements (Lbd, from COSMIC forward pass) and
-%   right Schur complements (LbdR, computed here via backward recursion).
+%   The COSMIC algorithm normalizes data by 1/sqrt(N), so S_scaled contains
+%   D_s'D_s + regularization. The posterior covariance requires the UNSCALED
+%   Hessian where D'D = N * D_s'D_s appears. This function reconstructs the
+%   unscaled diagonal blocks, then computes left and right Schur complements
+%   to obtain the diagonal blocks of the inverse.
 %
-%   The diagonal blocks of the inverse of a block tridiagonal matrix A
-%   satisfy:
-%       P(k) = (Lbd_k^L + Lbd_k^R - S_kk)^{-1}
+%   P(k) = (Lbd_k^L + Lbd_k^R - S_kk)^{-1}
 %
-%   where S_kk is the original diagonal block of A (before elimination).
-%
-%   Complexity: O(N * d^3), same as the forward pass.
+%   Complexity: O(N * d^3).
 
     I = eye(d);
-    LbdR = zeros(d, d, N);
-    P = zeros(d, d, N);
 
-    % Right Schur complements (backward recursion)
+    % ---- Reconstruct unscaled diagonal blocks S_u(k) = N*DtD(k) + reg(k) ----
+    S = zeros(d, d, N);
+    for k = 1:N
+        if k == 1
+            reg = lambda(1) * I;
+        elseif k == N
+            reg = lambda(N-1) * I;
+        else
+            reg = (lambda(k-1) + lambda(k)) * I;
+        end
+        DtD_scaled = S_scaled(:, :, k) - reg;
+        S(:, :, k) = N * DtD_scaled + reg;
+    end
+
+    % ---- Left Schur complements (forward) ----
+    LbdL = zeros(d, d, N);
+    LbdL(:, :, 1) = S(:, :, 1);
+    for k = 2:N
+        LbdL(:, :, k) = S(:, :, k) - lambda(k-1)^2 * (LbdL(:, :, k-1) \ I);
+    end
+
+    % ---- Right Schur complements (backward) ----
+    LbdR = zeros(d, d, N);
     LbdR(:, :, N) = S(:, :, N);
     for k = N-1:-1:1
         LbdR(:, :, k) = S(:, :, k) - lambda(k)^2 * (LbdR(:, :, k+1) \ I);
     end
 
-    % Combine: P(k) = (Lbd^L(k) + Lbd^R(k) - S(k))^{-1}
+    % ---- Combine: P(k) = (LbdL(k) + LbdR(k) - S(k))^{-1} ----
+    P = zeros(d, d, N);
     for k = 1:N
-        M = Lbd(:, :, k) + LbdR(:, :, k) - S(:, :, k);
+        M = LbdL(:, :, k) + LbdR(:, :, k) - S(:, :, k);
         P(:, :, k) = M \ I;
     end
 end
@@ -666,16 +689,19 @@ end
 function [Sigma, dof] = estimateNoiseCov(C, D, Xl, P, covMode, N, p, q, isVarLen, horizons)
 %ESTIMATENOISECOV Estimate noise covariance from COSMIC residuals.
 %
-%   Sigma = (1/nu) * sum_k E(k)' * E(k)
+%   The data D and Xl are scaled by 1/sqrt(N) (COSMIC convention). The
+%   scaled residuals E_s(k) have noise covariance Sigma/N. This function
+%   returns the UNSCALED noise covariance Sigma by multiplying by N.
 %
-%   where E(k) = Xl(k) - D(k)*C(k) are the residuals and nu is the
-%   effective degrees of freedom.
+%   The degrees of freedom use the unscaled hat-matrix trace:
+%     nu = sum_k |L(k)| - N * sum_k trace(D_s(k)'D_s(k) * P(k))
+%   where P(k) is from the unscaled Hessian.
 
     d = p + q;
     useCell = iscell(D);
 
-    % Accumulate residual scatter matrix and count observations
-    SSR = zeros(p, p);  % sum of E(k)' * E(k)
+    % Accumulate scaled residual scatter matrix and count observations
+    SSR_scaled = zeros(p, p);  % sum of E_s(k)' * E_s(k)
     totalObs = 0;
 
     for k = 1:N
@@ -694,12 +720,13 @@ function [Sigma, dof] = estimateNoiseCov(C, D, Xl, P, covMode, N, p, q, isVarLen
             continue;
         end
 
-        Ek = Xlk - Dk * Ck;  % (Lk x p)
-        SSR = SSR + Ek' * Ek;
+        Ek = Xlk - Dk * Ck;  % (Lk x p), scaled residuals
+        SSR_scaled = SSR_scaled + Ek' * Ek;
         totalObs = totalObs + Lk;
     end
 
-    % Exact degrees of freedom: nu = sum_k |L(k)| - sum_k trace(D(k)'*D(k) * P(k))
+    % Exact degrees of freedom using unscaled hat-matrix trace:
+    % trace(V_u'V_u A_u^{-1}) = N * sum_k trace(D_s'D_s * P_u(k))
     traceSum = 0;
     for k = 1:N
         if useCell
@@ -708,12 +735,12 @@ function [Sigma, dof] = estimateNoiseCov(C, D, Xl, P, covMode, N, p, q, isVarLen
             Dk = D(:, :, k);
         end
         if size(Dk, 1) > 0
-            DtD = Dk' * Dk;  % (d x d)
-            traceSum = traceSum + sum(sum(DtD .* P(:, :, k)));  % trace(DtD * P(k))
+            DtD = Dk' * Dk;  % (d x d), scaled
+            traceSum = traceSum + sum(sum(DtD .* P(:, :, k)));  % trace(DtD_s * P_u(k))
         end
     end
 
-    dof = totalObs - traceSum;
+    dof = totalObs - N * traceSum;
 
     % Conservative fallback if exact dof is non-positive
     if dof <= 0
@@ -723,7 +750,9 @@ function [Sigma, dof] = estimateNoiseCov(C, D, Xl, P, covMode, N, p, q, isVarLen
         end
     end
 
-    Sigma = SSR / dof;
+    % Unscaled noise covariance: scaled residuals have variance Sigma/N,
+    % so Sigma = N * SSR_scaled / dof
+    Sigma = N * SSR_scaled / dof;
 
     % Apply covariance mode restriction
     switch covMode
