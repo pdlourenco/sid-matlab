@@ -13,21 +13,52 @@ Unlike the commercial toolbox, sid exposes **asymptotic uncertainty estimates** 
 
 sid is designed from the ground up to run on **GNU Octave** as a first-class target — not just MATLAB with Octave as an afterthought. Every function is tested on both platforms in CI, so Octave users get the same reliability as MATLAB users. If you work in an environment where MATLAB licences are limited or unavailable, sid and Octave give you a fully open-source path to frequency-domain system identification.
 
+## Features
+
+- **Blackman-Tukey spectral analysis** (`sidFreqBT`) — the workhorse estimator, with configurable window size and automatic defaults
+- **Frequency-dependent resolution** (`sidFreqBTFDR`) — vary the smoothing bandwidth across the frequency axis
+- **Empirical transfer function estimate** (`sidFreqETFE`) — maximum resolution via FFT ratio, with optional smoothing
+- **Time-varying analysis** — `sidFreqBTMap` for sliding-window frequency response maps, `sidSpectrogram` for short-time FFT spectrograms
+- **LTV state-space identification** (`sidLTVdisc`) — the COSMIC algorithm for identifying time-varying A(k), B(k) matrices from state measurements, with automatic or manual regularization tuning
+- **Asymptotic uncertainty** — standard deviations and squared coherence returned for every frequency-domain estimate (Ljung, 1999)
+- **Confidence-band plotting** — `sidBodePlot`, `sidSpectrumPlot`, `sidMapPlot`, and `sidSpectrogramPlot` render shaded confidence bands out of the box
+- **SISO, MIMO, and time-series modes** — unified API across all frequency-domain estimation functions
+- **Validated against MATLAB's System Identification Toolbox** — comparison tests for `spa`, `spafdr`, and `etfe` run in CI
+- **19 test suites** with continuous integration on both MATLAB and GNU Octave
+
+## How It Works
+
+The core frequency-domain estimators use the **Blackman-Tukey method**: compute biased cross-covariances between input and output, apply a Hann lag window for spectral smoothing, then transform to the frequency domain via FFT (or direct DFT for custom frequency grids). The transfer function estimate is the ratio of cross-spectrum to input auto-spectrum, and the noise spectrum is obtained by subtraction. Asymptotic variance formulas from Ljung (1999) provide uncertainty estimates at each frequency, which are rendered as shaded confidence bands in the plotting functions. See [SPEC.md](SPEC.md) for the full mathematical derivation.
+
 ## Function Comparison
 
-| sid function | Replaces (System Identification Toolbox) | Description |
+**Frequency-domain estimation:**
+
+| sid function | Replaces | Description |
 |---|---|---|
 | `sidFreqBT` | `spa` | Blackman-Tukey frequency response and noise spectrum estimation |
 | `sidFreqBTFDR` | `spafdr` | Blackman-Tukey with frequency-dependent resolution |
 | `sidFreqETFE` | `etfe` | Empirical transfer function estimate (FFT ratio) |
+
+**Time-varying analysis:**
+
+| sid function | Replaces | Description |
+|---|---|---|
+| `sidFreqBTMap` | — | Time-varying frequency response map (sliding-window BT) |
+| `sidSpectrogram` | `spectrogram` | Short-time FFT spectrogram |
+| `sidLTVdisc` | — | Discrete LTV state-space identification (COSMIC algorithm) |
+| `sidLTVdiscTune` | — | Regularization tuning via validation loss or L-curve |
+
+**Plotting:**
+
+| sid function | Replaces | Description |
+|---|---|---|
 | `sidBodePlot` | — | Bode diagram with shaded confidence bands |
 | `sidSpectrumPlot` | — | Power spectrum plot with shaded confidence bands |
-| `sidFreqBTMap` | — | Time-varying frequency response map |
-| `sidSpectrogram` | `spectrogram` | Short-time FFT spectrogram |
 | `sidMapPlot` | — | Time-frequency color map for `sidFreqBTMap` results |
 | `sidSpectrogramPlot` | — | Spectrogram color map |
 
-All estimation functions return uncertainty estimates and squared coherence (SISO), and support both positional and name-value calling conventions.
+All estimation functions support both positional and name-value calling conventions.
 
 ## Installation
 
@@ -43,7 +74,7 @@ Then add it to your MATLAB or Octave path:
 run('/path/to/sid-matlab/sidInstall.m')
 ```
 
-To make the path persistent across sessions, add the line above to your [`startup.m`](https://www.mathworks.com/help/matlab/ref/startup.html) file.
+To make the path persistent across sessions, add the line above to your [`startup.m`](https://www.mathworks.com/help/matlab/ref/startup.html) file (or [`.octaverc`](https://docs.octave.org/latest/Startup-Files.html) for Octave). No `pkg install` is needed — sid is a plain directory of `.m` files that works on both platforms.
 
 ## Quick Start
 
@@ -61,6 +92,13 @@ sidBodePlot(result);
 sidSpectrumPlot(result);
 ```
 
+Time-series mode (output spectrum only, no input signal):
+
+```matlab
+result_ts = sidFreqBT(y, []);
+sidSpectrumPlot(result_ts);
+```
+
 See [`examples/`](examples/) for more usage patterns, including MIMO and time-series estimation.
 
 ## Compatibility
@@ -74,8 +112,10 @@ No toolboxes are required. The entire codebase uses only core MATLAB/Octave func
 
 ## Documentation
 
-- [**SPEC.md**](SPEC.md) — Full algorithm specification with mathematical derivations (reference: Ljung, *System Identification: Theory for the User*, 1999)
+- [**SPEC.md**](SPEC.md) — Full algorithm specification with mathematical derivations (references: Ljung 1999, Blackman & Tukey 1959, COSMIC — Carvalho et al. 2022)
 - [**Roadmap**](docs/sid_matlab_roadmap.md) — Development phases and planned features
+- [**COSMIC uncertainty derivation**](docs/cosmic_uncertainty_derivation.md) — Bayesian posterior covariance for LTV identification
+- [**COSMIC online recursion**](docs/cosmic_online_recursion.md) — Recursive/streaming formulation of the COSMIC algorithm
 - [**Examples**](examples/) — Runnable scripts demonstrating typical workflows
 
 ## Contributing

@@ -6,6 +6,10 @@
 
 ---
 
+> **Implementation status:** §1–7 (frequency-domain estimation, time-varying maps, spectrograms) and §8 base + §8.4 (`sidLTVdisc`, `sidLTVdiscTune`) are implemented. §8.8–8.12 (variable-length trajectories, Bayesian uncertainty, online/recursive COSMIC, frequency-response lambda tuning, output-only estimation) describe planned features not yet implemented.
+
+---
+
 ## 1. System Model
 
 All frequency-domain estimation in this package assumes the general linear time-invariant model:
