@@ -381,10 +381,13 @@ function result = welchEstimate(y, u, isTimeSeries, ny, nu, Lsub, Psub, nfft, wi
     end
 
     % ---- Average and normalize ----
-    PhiY = PhiY / (J * S1);
+    % Factor of 2 for one-sided spectrum (we exclude DC and use positive
+    % frequencies only). This cancels in G = Pyu/Puu and coherence, but is
+    % needed for correct PSD magnitude.
+    PhiY = 2 * PhiY / (J * S1);
     if ~isTimeSeries
-        PhiU  = PhiU  / (J * S1);
-        PhiYU = PhiYU / (J * S1);
+        PhiU  = 2 * PhiU  / (J * S1);
+        PhiYU = 2 * PhiYU / (J * S1);
     end
 
     % ---- Degrees of freedom for uncertainty ----
