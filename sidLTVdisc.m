@@ -17,11 +17,15 @@ function result = sidLTVdisc(X, U, varargin)
 %   block tridiagonal solver with O(N(p+q)^3) complexity.
 %
 %   INPUTS:
-%     X  - State data, (N+1 x p) for single trajectory, or
-%          (N+1 x p x L) for L trajectories. All trajectories must
-%          have the same horizon N+1.
-%     U  - Input data, (N x q) for single trajectory, or
-%          (N x q x L) for L trajectories.
+%     X  - State data, one of:
+%            (N+1 x p)     — single trajectory
+%            (N+1 x p x L) — L trajectories, same horizon
+%            {X1, X2, ...} — cell array of L trajectories with
+%                            variable horizons (N_l+1 x p each)
+%     U  - Input data, matching format:
+%            (N x q)       — single trajectory
+%            (N x q x L)   — L trajectories, same horizon
+%            {U1, U2, ...} — cell array, (N_l x q) each
 %
 %   NAME-VALUE OPTIONS:
 %     'Lambda'       - Regularization strength. Options:
@@ -76,11 +80,15 @@ function result = sidLTVdisc(X, U, varargin)
 %   See also: sidLTVdiscTune, sidFreqBTMap
 
     % ---- Parse inputs ----
-    [X, U, lambda, doPrecondition, algorithm, N, p, q, L] = ...
+    [X, U, lambda, doPrecondition, algorithm, N, p, q, L, isVarLen, horizons] = ...
         parseInputs(X, U, varargin{:});
 
     % ---- Build data matrices ----
-    [D, Xl] = buildDataMatrices(X, U, N, p, q, L);
+    if isVarLen
+        [D, Xl] = buildDataMatricesVarLen(X, U, N, p, q, L, horizons);
+    else
+        [D, Xl] = buildDataMatrices(X, U, N, p, q, L);
+    end
 
     % ---- Lambda selection ----
     if ischar(lambda) && strcmpi(lambda, 'auto')
@@ -128,43 +136,104 @@ end
 %  LOCAL FUNCTIONS
 % ========================================================================
 
-function [X, U, lambda, doPrecondition, algorithm, N, p, q, L] = ...
+function [X, U, lambda, doPrecondition, algorithm, N, p, q, L, isVarLen, horizons] = ...
         parseInputs(X, U, varargin)
 %PARSEINPUTS Validate and parse inputs for sidLTVdisc.
+%   Supports both 3D array input (uniform horizon) and cell array input
+%   (variable-length trajectories).
 
-    % Ensure 3D arrays
-    if ndims(X) == 2  %#ok<ISMAT>
-        X = reshape(X, size(X,1), size(X,2), 1);
-    end
-    if ndims(U) == 2  %#ok<ISMAT>
-        U = reshape(U, size(U,1), size(U,2), 1);
-    end
+    isVarLen = iscell(X);
 
-    N = size(X, 1) - 1;    % number of time steps
-    p = size(X, 2);         % state dimension
-    q = size(U, 2);         % input dimension
-    L = size(X, 3);         % number of trajectories
+    if isVarLen
+        % ---- Variable-length trajectory mode (cell arrays) ----
+        if ~iscell(U)
+            error('sid:badInput', 'When X is a cell array, U must also be a cell array.');
+        end
+        L = numel(X);
+        if numel(U) ~= L
+            error('sid:dimMismatch', ...
+                'X has %d trajectories but U has %d.', L, numel(U));
+        end
+        if L == 0
+            error('sid:badInput', 'Cell arrays must not be empty.');
+        end
 
-    % Validate dimensions
-    if size(U, 1) ~= N
-        error('sid:dimMismatch', ...
-            'U must have %d rows (N), but has %d. X has N+1 = %d rows.', ...
-            N, size(U,1), N+1);
-    end
-    if size(U, 3) ~= L
-        error('sid:dimMismatch', ...
-            'X has %d trajectories but U has %d.', L, size(U,3));
-    end
-    if N < 2
-        error('sid:tooShort', 'Need at least 3 state measurements (N >= 2).');
-    end
+        % Extract dimensions from first trajectory
+        p = size(X{1}, 2);
+        q = size(U{1}, 2);
 
-    % Check for NaN/Inf
-    if any(~isfinite(X(:)))
-        error('sid:nonFinite', 'State data X contains NaN or Inf.');
-    end
-    if any(~isfinite(U(:)))
-        error('sid:nonFinite', 'Input data U contains NaN or Inf.');
+        horizons = zeros(L, 1);
+        for l = 1:L
+            if size(X{l}, 2) ~= p
+                error('sid:dimMismatch', ...
+                    'Trajectory %d has %d state dims, expected %d.', l, size(X{l},2), p);
+            end
+            if size(U{l}, 2) ~= q
+                error('sid:dimMismatch', ...
+                    'Trajectory %d has %d input dims, expected %d.', l, size(U{l},2), q);
+            end
+            Nl = size(X{l}, 1) - 1;
+            if size(U{l}, 1) ~= Nl
+                error('sid:dimMismatch', ...
+                    'Trajectory %d: U has %d rows but X has %d (need N and N+1).', ...
+                    l, size(U{l},1), size(X{l},1));
+            end
+            if Nl < 1
+                error('sid:tooShort', 'Trajectory %d has fewer than 2 state measurements.', l);
+            end
+            horizons(l) = Nl;
+
+            % Check for NaN/Inf
+            if any(~isfinite(X{l}(:)))
+                error('sid:nonFinite', 'State data X{%d} contains NaN or Inf.', l);
+            end
+            if any(~isfinite(U{l}(:)))
+                error('sid:nonFinite', 'Input data U{%d} contains NaN or Inf.', l);
+            end
+        end
+
+        N = max(horizons);
+        if N < 2
+            error('sid:tooShort', 'Need at least 3 state measurements (N >= 2).');
+        end
+    else
+        % ---- Uniform-horizon mode (3D arrays) ----
+        horizons = [];
+
+        % Ensure 3D arrays
+        if ndims(X) == 2  %#ok<ISMAT>
+            X = reshape(X, size(X,1), size(X,2), 1);
+        end
+        if ndims(U) == 2  %#ok<ISMAT>
+            U = reshape(U, size(U,1), size(U,2), 1);
+        end
+
+        N = size(X, 1) - 1;    % number of time steps
+        p = size(X, 2);         % state dimension
+        q = size(U, 2);         % input dimension
+        L = size(X, 3);         % number of trajectories
+
+        % Validate dimensions
+        if size(U, 1) ~= N
+            error('sid:dimMismatch', ...
+                'U must have %d rows (N), but has %d. X has N+1 = %d rows.', ...
+                N, size(U,1), N+1);
+        end
+        if size(U, 3) ~= L
+            error('sid:dimMismatch', ...
+                'X has %d trajectories but U has %d.', L, size(U,3));
+        end
+        if N < 2
+            error('sid:tooShort', 'Need at least 3 state measurements (N >= 2).');
+        end
+
+        % Check for NaN/Inf
+        if any(~isfinite(X(:)))
+            error('sid:nonFinite', 'State data X contains NaN or Inf.');
+        end
+        if any(~isfinite(U(:)))
+            error('sid:nonFinite', 'Input data U contains NaN or Inf.');
+        end
     end
 
     % Parse name-value options
@@ -238,17 +307,63 @@ function [D, Xl] = buildDataMatrices(X, U, N, p, q, L)
 end
 
 
+function [D, Xl] = buildDataMatricesVarLen(X, U, N, p, q, L, horizons)
+%BUILDDATAMATRICESVARLEN Construct D(k) and Xl(k) for variable-length trajectories.
+%
+%   At each time step k, only trajectories with horizon > k contribute.
+%   D{k}  has size (|L(k)| x p+q), Xl{k} has size (|L(k)| x p).
+%   Each is normalized by 1/sqrt(|L(k)|) to keep the cost well-scaled.
+
+    D  = cell(N, 1);
+    Xl = cell(N, 1);
+
+    for k = 0:N-1
+        % Active trajectories at step k: those with horizon > k
+        active = find(horizons > k);
+        Lk = length(active);
+
+        if Lk == 0
+            % No trajectories active — empty matrices
+            D{k+1}  = zeros(0, p + q);
+            Xl{k+1} = zeros(0, p);
+            continue;
+        end
+
+        sqrtLk = sqrt(Lk);
+        Dk  = zeros(Lk, p + q);
+        Xlk = zeros(Lk, p);
+
+        for ii = 1:Lk
+            l = active(ii);
+            Dk(ii, :)  = [X{l}(k+1, :), U{l}(k+1, :)] / sqrtLk;
+            Xlk(ii, :) = X{l}(k+2, :) / sqrtLk;
+        end
+
+        D{k+1}  = Dk;
+        Xl{k+1} = Xlk;
+    end
+end
+
+
 function [S, T] = buildBlockTerms(D, Xl, lambda, N, p, q)
 %BUILDBLOCKTERMS Compute the block diagonal S_kk and right-hand side T_k.
+%   Handles both 3D array D (uniform) and cell array D (variable-length).
 
     d = p + q;
     S = zeros(d, d, N);
     T = zeros(d, p, N);
+    useCell = iscell(D);
 
     for k = 1:N
-        Dk = D(:, :, k);
+        if useCell
+            Dk  = D{k};
+            Xlk = Xl{k};
+        else
+            Dk  = D(:, :, k);
+            Xlk = Xl(:, :, k);
+        end
         S(:, :, k) = Dk' * Dk;
-        T(:, :, k) = Dk' * Xl(:, :, k);
+        T(:, :, k) = Dk' * Xlk;
     end
 
     % Add regularization to diagonal
@@ -333,15 +448,21 @@ function [cost, fidelity, reg] = evaluateCost(A, B, D, Xl, lambda, N, p, q)
 %   cost      = fidelity + reg
 %   fidelity  = (1/2) Σ_k ||D(k) C(k) - X'(k)||²_F
 %   reg       = (1/2) Σ_k λ_k ||C(k) - C(k-1)||²_F
+%   Handles both 3D array D (uniform) and cell array D (variable-length).
 
     fidelity = 0;
     priorVec = zeros(N - 1, 1);
+    useCell = iscell(D);
 
     for k = 1:N
         % Data fidelity: ||D(k)*C(k) - X'(k)||²_F
         % C(k) = [A(k)'; B(k)'] so D(k)*C(k) = D(k)*[A'; B']
         Ck = [A(:, :, k)'; B(:, :, k)'];
-        residual = D(:, :, k) * Ck - Xl(:, :, k);
+        if useCell
+            residual = D{k} * Ck - Xl{k};
+        else
+            residual = D(:, :, k) * Ck - Xl(:, :, k);
+        end
         fidelity = fidelity + norm(residual, 'fro')^2;
 
         % Regularization: ||C(k) - C(k-1)||²_F
