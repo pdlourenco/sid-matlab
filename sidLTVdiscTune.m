@@ -201,55 +201,43 @@ function [bestResult, bestLambda, info] = frequencyTune(X, U, varargin)
         segLen = min(floor(N / 4), 256);
     end
 
-    % ---- Step 1: Run sidFreqMap on training data (state as output) ----
-    % Treat each state component x_i as an output channel, with u as input.
-    % Use all trajectories (multi-trajectory support from Phase 9a).
+    % ---- Step 1: Run sidFreqMap per state component (SISO) ----
+    % Process each state component x_i as a separate SISO channel.
+    % MIMO mode produces NaN for ResponseStd in v1.0, so SISO per-channel
+    % is needed to get valid uncertainty estimates for the Mahalanobis test.
     if iscell(X)
-        % Variable-length cell arrays: use first trajectory for sidFreqMap
-        y_freq = X{1}(1:end-1, :);  % (N x p) — drop last row (x has N+1 rows)
-        u_freq = U{1};              % (N x q)
+        u_freq = U{1};
     else
         nTrajData = size(X, 3);
-        y_freq = X(1:N, :, :);     % (N x p x L) — state at times 1..N
-        u_freq = U;                 % (N x q x L)
+        u_freq = U;
         if nTrajData == 1
-            y_freq = y_freq(:, :);
             u_freq = u_freq(:, :);
         end
     end
 
-    fmapResult = sidFreqMap(y_freq, u_freq, 'SegmentLength', segLen);
-    fmapFreqs = fmapResult.Frequency;
+    fmapResults = cell(p, 1);
+    for ch = 1:p
+        if iscell(X)
+            y_ch = X{1}(1:end-1, ch);
+        else
+            if nTrajData > 1
+                y_ch = X(1:N, ch, :);  % (N x 1 x L) — single state component
+            else
+                y_ch = X(1:N, ch);
+            end
+        end
+        fmapResults{ch} = sidFreqMap(y_ch, u_freq, 'SegmentLength', segLen);
+    end
+    fmapFreqs = fmapResults{1}.Frequency;
 
     % ---- Align time grids ----
-    % sidFreqMap segment center times (in samples, 1-based)
-    segCenterSamples = fmapResult.Time / fmapResult.SampleTime;
+    segCenterSamples = fmapResults{1}.Time / fmapResults{1}.SampleTime;
     kNearest = max(1, min(N, round(segCenterSamples)));
     nk = length(kNearest);
     nf = length(fmapFreqs);
 
-    % ---- Extract sidFreqMap data ----
-    % Response and ResponseStd are (nf x K) for SISO, (nf x K x ny x nu) for MIMO
-    G_data = fmapResult.Response;
-    GStd_data = fmapResult.ResponseStd;
-
-    % Coherence mask: only score points with sufficient coherence
-    if ~isempty(fmapResult.Coherence)
-        cohMask = fmapResult.Coherence >= cohThresh;  % (nf x K)
-    else
-        % MIMO: no per-point coherence, use all points
-        cohMask = true(nf, nk);
-    end
-
     % Chi-square threshold for 95% confidence, 2 DOF (complex scalar SISO)
     chi2thresh = 5.991;
-    % For MIMO p x q complex entries: DOF = 2*p*q
-    if p > 1
-        dof = 2 * p * size(U, 2);
-        % Approximate chi2inv(0.95, dof) using Wilson-Hilferty
-        z = 1.6449;  % norminv(0.95)
-        chi2thresh = dof * (1 - 2/(9*dof) + z*sqrt(2/(9*dof)))^3;
-    end
 
     % ---- Step 2: Grid search with Mahalanobis scoring ----
     fractions = zeros(nGrid, 1);
@@ -261,9 +249,28 @@ function [bestResult, bestLambda, info] = frequencyTune(X, U, varargin)
         % Frozen transfer function at aligned time steps and matching frequencies
         frz = sidLTVdiscFrozen(res, 'Frequencies', fmapFreqs, 'TimeSteps', kNearest);
 
-        % Compute consistency fraction
-        fractions(j) = computeConsistency(G_data, GStd_data, ...
-            frz.Response, frz.ResponseStd, cohMask, chi2thresh, p);
+        % Average per-channel consistency fraction across state components
+        chanFracs = zeros(p, 1);
+        for ch = 1:p
+            % Extract SISO frozen TF for channel ch: G_frozen(ω, ch, :, k)
+            G_frz_ch = reshape(frz.Response(:, ch, :, :), nf, nk);
+            if ~isempty(frz.ResponseStd)
+                GStd_frz_ch = reshape(frz.ResponseStd(:, ch, :, :), nf, nk);
+            else
+                GStd_frz_ch = zeros(nf, nk);
+            end
+            % sidFreqMap SISO data for this channel
+            G_dat_ch = fmapResults{ch}.Response;      % (nf x K)
+            GStd_dat_ch = fmapResults{ch}.ResponseStd; % (nf x K)
+            if ~isempty(fmapResults{ch}.Coherence)
+                cohMask_ch = fmapResults{ch}.Coherence >= cohThresh;
+            else
+                cohMask_ch = true(nf, nk);
+            end
+            chanFracs(ch) = computeConsistencySISO(G_dat_ch, GStd_dat_ch, ...
+                G_frz_ch, GStd_frz_ch, cohMask_ch, chi2thresh);
+        end
+        fractions(j) = mean(chanFracs);
     end
 
     % ---- Step 3: Select largest lambda with sufficient consistency ----
@@ -287,7 +294,7 @@ function [bestResult, bestLambda, info] = frequencyTune(X, U, varargin)
     info.lambdaGrid     = lambdaGrid(:);
     info.fractions      = fractions;
     info.bestFraction   = fractions(bestIdx);
-    info.freqMapResult  = fmapResult;
+    info.freqMapResults = fmapResults;
     info.chi2Threshold  = chi2thresh;
 end
 
@@ -296,51 +303,21 @@ end
 %  LOCAL HELPER FUNCTIONS
 % ========================================================================
 
-function frac = computeConsistency(G_data, GStd_data, G_frozen, GStd_frozen, ...
-                                    cohMask, chi2thresh, p)
-%COMPUTECONSISTENCY Mahalanobis-like consistency between two TF estimates.
+function frac = computeConsistencySISO(G_data, GStd_data, G_frozen, GStd_frozen, ...
+                                       cohMask, chi2thresh)
+%COMPUTECONSISTENCYSISO Mahalanobis-like consistency for one SISO channel.
 %
-%   Returns the fraction of valid (ω, t) grid points where the parametric
-%   (frozen) and non-parametric (sidFreqMap) estimates are consistent.
+%   G_data, GStd_data: (nf x K) from sidFreqMap
+%   G_frozen, GStd_frozen: (nf x nk) from sidLTVdiscFrozen (one channel)
+%   cohMask: (nf x K) logical, true where coherence is sufficient
+%   chi2thresh: scalar threshold (5.991 for 95% with 2 DOF)
 
-    nf = size(G_data, 1);
-    nk = size(G_data, 2);
+    denominator = GStd_frozen.^2 + GStd_data.^2;
+    denominator(denominator < eps) = eps;
+    d2 = abs(G_frozen - G_data).^2 ./ denominator;
 
-    if p == 1
-        % SISO: G_data is (nf x K), G_frozen is (nf x 1 x 1 x nk)
-        G_frz = reshape(G_frozen, nf, nk);
-        GStd_frz = reshape(GStd_frozen, nf, nk);
-        G_dat = G_data;
-        GStd_dat = GStd_data;
-
-        % Mahalanobis distance: d² = |G_frozen - G_data|² / (σ²_f + σ²_d)
-        denominator = GStd_frz.^2 + GStd_dat.^2;
-        denominator(denominator < eps) = eps;
-        d2 = abs(G_frz - G_dat).^2 ./ denominator;
-
-        % Consistent where d² < chi² threshold AND coherence is sufficient
-        isConsistent = (d2 < chi2thresh) & cohMask;
-        isValid = cohMask;
-
-    else
-        % MIMO: compare element-wise, average d² across channels
-        % G_data: (nf x K x p x q), G_frozen: (nf x p x q x nk)
-        % Reshape frozen to match: (nf x nk x p x q)
-        G_frz = permute(G_frozen, [1 4 2 3]);
-        GStd_frz = permute(GStd_frozen, [1 4 2 3]);
-        G_dat = G_data;
-        GStd_dat = GStd_data;
-
-        denominator = GStd_frz.^2 + GStd_dat.^2;
-        denominator(denominator < eps) = eps;
-        d2_all = abs(G_frz - G_dat).^2 ./ denominator;
-
-        % Sum d² across channels → (nf x nk)
-        d2 = sum(sum(d2_all, 3), 4);
-
-        isConsistent = (d2 < chi2thresh) & cohMask;
-        isValid = cohMask;
-    end
+    isConsistent = (d2 < chi2thresh) & cohMask;
+    isValid = cohMask;
 
     nValid = sum(isValid(:));
     if nValid == 0

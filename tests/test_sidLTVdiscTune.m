@@ -110,7 +110,7 @@ assert(isscalar(bestLam_f) && bestLam_f > 0, 'bestLambda should be positive scal
 assert(isfield(info_f, 'lambdaGrid'), 'info should have lambdaGrid');
 assert(isfield(info_f, 'fractions'), 'info should have fractions');
 assert(isfield(info_f, 'bestFraction'), 'info should have bestFraction');
-assert(isfield(info_f, 'freqMapResult'), 'info should have freqMapResult');
+assert(isfield(info_f, 'freqMapResults'), 'info should have freqMapResults');
 assert(length(info_f.fractions) == length(grid_freq), 'fractions length should match grid');
 assert(all(info_f.fractions >= 0 & info_f.fractions <= 1), 'fractions should be in [0,1]');
 fprintf('  Test 7 passed: frequency method produces valid output.\n');
