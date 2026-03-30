@@ -44,3 +44,39 @@ jobs:
         uses: matlab-actions/run-command@v2.4.1
         with:
           command: run('tests/runAllTests.m')
+
+  octave-examples:
+    name: Run examples (Octave)
+    needs: octave-tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Install GNU Octave and xvfb
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y octave xvfb
+
+      - name: Run examples
+        run: xvfb-run octave --no-gui --eval "run('examples/runAllExamples.m')"
+
+  matlab-examples:
+    name: Run examples (MATLAB)
+    needs: matlab-tests
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up MATLAB
+        uses: matlab-actions/setup-matlab@v2.7.0
+
+      - name: Run examples
+        uses: matlab-actions/run-command@v2.4.1
+        with:
+          command: run('examples/runAllExamples.m')
