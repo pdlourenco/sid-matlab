@@ -19,15 +19,18 @@ sid  [Domain]  [Method/Variant]
 | **`sidFreqBT`** | `spa` | Frequency response via Blackman-Tukey | ✅ |
 | **`sidFreqBTFDR`** | `spafdr` | Blackman-Tukey, frequency-dependent resolution | ✅ |
 | **`sidFreqETFE`** | `etfe` | Empirical transfer function estimate | ✅ |
-| **`sidFreqMap`** | `tfestimate`, `mscohere`, `cpsd` | Time-varying frequency response map (BT or Welch) | ✅ (BT), ⬜ (Welch) |
+| **`sidFreqMap`** | `tfestimate`, `mscohere`, `cpsd` | Time-varying frequency response map (BT or Welch) | ✅ |
 | **`sidSpectrogram`** | `spectrogram` | Short-time FFT spectrogram | ✅ |
 | **`sidLTVdisc`** | — | Discrete LTV state-space identification (COSMIC) | ✅ |
-| **`sidLTVdiscTune`** | — | Lambda tuning (validation-based and frequency-response) | ✅ (validation-based only) |
+| **`sidLTVdiscTune`** | — | Lambda tuning (validation-based and frequency-response) | ✅ |
 | **`sidLTVdiscFrozen`** | — | Frozen transfer function G(ω,k) from A(k), B(k) | ✅ |
 | **`sidLTVdiscInit`** | — | Initialize recursive/online COSMIC estimator | ⬜ |
 | **`sidLTVdiscUpdate`** | — | Process one time step (filtered estimate) | ⬜ |
 | **`sidLTVdiscSmooth`** | — | Backward pass over window (smoothed estimates) | ⬜ |
 | **`sidLTVdiscIO`** | — | Output-only LTV identification (two-stage) | ⬜ |
+| **`sidDetrend`** | `detrend` | Polynomial detrending (preprocessing) | ⬜ |
+| **`sidResidual`** | `resid` | Residual analysis (whiteness + independence tests) | ⬜ |
+| **`sidCompare`** | `compare` | Model output comparison with fit metric | ⬜ |
 | `sidTfARX` | `arx` | Transfer function, ARX model | — |
 | `sidTfARMAX` | `armax` | Transfer function, ARMAX model | — |
 | `sidSsN4SID` | `n4sid` | State-space, N4SID subspace method | — |
@@ -76,6 +79,9 @@ sid-matlab/
 ├── sidSpectrumPlot.m        % Power spectrum plot
 ├── sidMapPlot.m             % Time-frequency color map
 ├── sidSpectrogramPlot.m     % Spectrogram color map
+├── sidDetrend.m             % Polynomial detrending (preprocessing)              (planned)
+├── sidResidual.m            % Residual analysis (whiteness + independence)        (planned)
+├── sidCompare.m             % Model output comparison with fit metric             (planned)
 ├── internal/
 │   ├── sidCov.m             % Biased covariance estimation
 │   ├── sidDFT.m             % DFT computation (FFT + direct paths)
@@ -85,7 +91,7 @@ sid-matlab/
 │   ├── sidValidate.m        % Input parsing and validation
 │   └── sidValidateData.m    % Data validation helper
 ├── tests/
-│   ├── runAllTests.m        % Master test runner (25 suites)
+│   ├── runAllTests.m        % Master test runner
 │   ├── test_sidFreqBT.m     % SISO + time series + MIMO
 │   ├── test_sidFreqBTFDR.m
 │   ├── test_sidFreqETFE.m
@@ -105,17 +111,36 @@ sid-matlab/
 │   ├── test_compareSpa.m    % vs. MathWorks spa
 │   ├── test_compareEtfe.m   % vs. MathWorks etfe
 │   ├── test_compareSpafdr.m % vs. MathWorks spafdr
-│   ├── test_sidLTVdiscUncertainty.m  % Bayesian uncertainty
-│   ├── test_sidLTVdiscFrozen.m      % frozen transfer function
 │   ├── test_compareWelch.m  % vs. MathWorks tfestimate/mscohere
-│   └── test_sidLTVdiscVarLen.m  % variable-length trajectories
+│   ├── test_compareMultiTraj.m
+│   ├── test_multiTrajectory.m
+│   ├── test_sidLTVdisc.m
+│   ├── test_sidLTVdiscTune.m
+│   ├── test_sidLTVdiscUncertainty.m
+│   ├── test_sidLTVdiscFrozen.m
+│   ├── test_sidLTVdiscVarLen.m
+│   ├── test_sidDetrend.m                                         (planned)
+│   ├── test_sidResidual.m                                        (planned)
+│   └── test_sidCompare.m                                         (planned)
 ├── examples/
-│   └── exampleSISO.m
+│   ├── README.md
+│   ├── exampleSISO.m
+│   ├── exampleMIMO.m
+│   ├── exampleETFE.m
+│   ├── exampleFreqDepRes.m
+│   ├── exampleFreqMap.m
+│   ├── exampleSpectrogram.m
+│   ├── exampleCoherence.m
+│   ├── exampleMethodComparison.m
+│   ├── exampleLTVdisc.m
+│   ├── exampleMultiTrajectory.m
+│   └── runAllExamples.m
 ├── docs/
 │   ├── sid_matlab_roadmap.md
 │   ├── cosmic_uncertainty_derivation.md
 │   ├── cosmic_online_recursion.md
-│   └── cosmic_automatic_tuning.md
+│   ├── cosmic_automatic_tuning.md
+│   └── multi_trajectory_spectral_theory.md
 ├── SPEC.md
 ├── LICENSE                    % MIT
 ├── README.md
@@ -212,7 +237,7 @@ result.Method             % 'sidFreqBT', 'sidFreqBTFDR', 'sidFreqETFE', or 'sidF
 - `sidBodePlot.m` extended: subplot grid per channel pair
 - Tests: 2x2 known system, verify channel-by-channel
 
-### Phase 7 — `sidFreqMap` + `sidSpectrogram` — Time-Varying Analysis (~6 days) ✅ (BT), ⬜ (Welch)
+### Phase 7 — `sidFreqMap` + `sidSpectrogram` — Time-Varying Analysis (~6 days) ✅
 
 - `sidFreqMap.m`:
   - Outer segmentation: sliding overlapping windows (shared by both algorithms)
@@ -255,14 +280,14 @@ result.Method             % 'sidFreqBT', 'sidFreqBTFDR', 'sidFreqETFE', or 'sidF
   - L-curve lambda selection: verify reasonable choice
   - Preconditioning and uniqueness condition checks
 
-### Phase 8a — Variable-Length Trajectories (~2 days) ⬜
+### Phase 8a — Variable-Length Trajectories (~2 days) ✅
 
 - Extend input parsing to accept cell arrays of different-length trajectories
 - Modify `buildDataMatrices` to handle per-step active trajectory sets
 - Normalization: `1/sqrt(|L(k)|)` per step
 - Tests: mix of short and long trajectories, verify identical to uniform when all same length
 
-### Phase 8b — Bayesian Uncertainty (~4 days) ⬜
+### Phase 8b — Bayesian Uncertainty (~4 days) ✅
 
 **Theory:** `docs/cosmic_uncertainty_derivation.md`
 
@@ -293,7 +318,7 @@ Key insight: COSMIC forward pass = Kalman filter on parameter evolution; backwar
   - Process data one-at-a-time, compare final result to batch COSMIC
   - Timing: O(1) per step regardless of history length
 
-### Phase 8d — Lambda Tuning via Frequency Response (~4 days) ⬜
+### Phase 8d — Lambda Tuning via Frequency Response (~4 days) ✅
 
 - Extend `sidLTVdiscTune` with `'Method', 'frequency'` option
 - Frozen transfer function vs. `sidFreqMap` comparison
@@ -314,7 +339,7 @@ Key insight: COSMIC forward pass = Kalman filter on parameter evolution; backwar
 - `sidFreqBTFDR.m` — frequency-dependent window size
 - Tests for both
 
-### Phase 9a — Multi-Trajectory Support for Frequency Functions (~3 days) ⬜
+### Phase 9a — Multi-Trajectory Support for Frequency Functions (~3 days) ✅
 
 **Theory:** `docs/multi_trajectory_spectral_theory.md`
 
@@ -331,7 +356,33 @@ Key insight: COSMIC forward pass = Kalman filter on parameter evolution; backwar
   - Variable-length: verify graceful handling when not all trajectories span all segments
   - Variance check: Monte Carlo confirm 1/L variance reduction
 
-### Phase 10 — Validation + Release (~4 days) 🔄
+### Phase 11 — Workflow Utilities (~4 days) ⬜
+
+- `sidDetrend.m`:
+  - Polynomial detrending: remove mean (d=0), linear trend (d=1, default), or higher order
+  - Segment-wise option for long records
+  - Returns detrended data and removed trend
+  - Multi-channel support (detrend each channel independently)
+- `sidResidual.m`:
+  - Compute residuals from any sid model + data
+  - For frequency-domain models: IFFT filtering of input through Ĝ(ω)
+  - For state-space models: forward propagation x̂(k+1) = A(k)x̂(k) + B(k)u(k)
+  - Whiteness test: normalised autocorrelation within ±2.58/sqrt(N)
+  - Independence test: normalised cross-correlation with input within same bounds
+  - Optional diagnostic plot (two-panel: autocorrelation + cross-correlation)
+- `sidCompare.m`:
+  - Simulate model output and overlay on measured data
+  - NRMSE fit percentage: 100 × (1 - ||y - ŷ|| / ||y - mean(y)||)
+  - Works with frequency-domain and state-space models
+  - Multi-channel and multi-trajectory support
+  - Optional comparison plot
+- Tests:
+  - sidDetrend: known linear trend, verify removal to machine precision
+  - sidResidual: good model (white residuals) vs. wrong-order model (coloured residuals)
+  - sidCompare: perfect model gives 100% fit, mean predictor gives 0%
+  - Cross-method: detrend → estimate → residual → compare end-to-end workflow
+
+### Phase 10 — Validation, Freeze + Release (~4 days) 🔄
 
 - `exampleCompare.m` — head-to-head vs. MathWorks `spa`
 - Octave CI on GitHub Actions
@@ -350,16 +401,17 @@ Key insight: COSMIC forward pass = Kalman filter on parameter evolution; backwar
 | 4. Uncertainty | 3 days | 11 days | ✅ |
 | 5. Plotting | 2 days | 13 days | ✅ |
 | 6. MIMO | 4 days | 17 days | ✅ |
-| 7. sidFreqMap + sidSpectrogram | 6 days | 23 days | ✅ (BT), ⬜ (Welch) |
+| 7. sidFreqMap + sidSpectrogram | 6 days | 23 days | ✅ |
 | 8. sidLTVdisc base | 5 days | 28 days | ✅ |
 | 8a. Variable-length trajectories | 2 days | 30 days | ✅ |
 | 8b. Bayesian uncertainty | 4 days | 34 days | ✅ |
 | 8c. Online/recursive COSMIC | 4 days | 38 days | ⬜ |
-| 8d. Lambda via frequency response | 4 days | 42 days | ⬜ |
+| 8d. Lambda via frequency response | 4 days | 42 days | ✅ |
 | 8e. Output-only (two-stage) | 3 days | 45 days | ⬜ |
 | 9. ETFE + BTFDR | 4 days | 49 days | ✅ |
-| 9a. Multi-trajectory spectral | 3 days | 52 days | ⬜ |
-| 10. Validation + release | 4 days | 56 days | 🔄 |
+| 9a. Multi-trajectory spectral | 3 days | 52 days | ✅ |
+| 11. Workflow utilities | 4 days | 56 days | ⬜ |
+| 10. Validation, freeze + release | 4 days | 60 days | 🔄 |
 
 ---
 
@@ -381,9 +433,13 @@ Key insight: COSMIC forward pass = Kalman filter on parameter evolution; backwar
 - `maxSize` data segmentation
 - Custom window functions (Hann only for sidFreqBT)
 - idfrd-compatible class
-- Python / Julia ports
+- Python / Julia ports (v1.0 freeze → port → release)
 - C reference implementation
+- Online/recursive COSMIC (Phase 8c — v2)
+- Output-only LTV estimation (Phase 8e — v2)
 - EM-style or direct output equation LTV identification
 - Alternative regularization norms (non-squared L2, L1 total variation)
 - Alternative LTV algorithms (TVERA, TVOKID) — `'Algorithm'` parameter is ready
 - GCV lambda selection
+- Parametric identification: ARX, ARMAX, state-space subspace methods (v2)
+- LPV identification: structured parameter-varying models (v2)
