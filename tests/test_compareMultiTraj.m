@@ -84,12 +84,16 @@ for l = 1:L
 end
 
 r_sid = sidFreqETFE(y3, u3, 'Smoothing', 11);
-w = r_sid.Frequency;
 dMerged = merge(dList{:});
 
-% MathWorks etfe with smoothing
-G_etfe = etfe(dMerged, 11, w);
+% MathWorks etfe with smoothing (etfe does not accept a frequency vector;
+% use default frequencies and compare at those)
+G_etfe = etfe(dMerged, 11);
+w_etfe = G_etfe.Frequency(:) * (2 * pi * Ts);  % Hz -> rad/sample
 resp_etfe = squeeze(G_etfe.ResponseData);
+
+% Re-run sid at the same frequencies for a fair comparison
+r_sid = sidFreqETFE(y3, u3, 'Smoothing', 11, 'Frequencies', w_etfe);
 
 relErr = max(abs(abs(r_sid.Response) - abs(resp_etfe)) ./ max(abs(resp_etfe), 1e-10));
 assert(relErr < 0.15, ...
