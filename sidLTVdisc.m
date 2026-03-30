@@ -4,7 +4,8 @@ function result = sidLTVdisc(X, U, varargin)
 %   result = sidLTVdisc(X, U)
 %   result = sidLTVdisc(X, U, 'Lambda', lambda)
 %   result = sidLTVdisc(X, U, 'Lambda', 'auto')
-%   result = sidLTVdisc(X, U, 'Lambda', lambda, 'Precondition', true)
+%   result = sidLTVdisc(X, U, 'Lambda', lambda, 'Uncertainty', true)
+%   result = sidLTVdisc(X, U, ..., 'NoiseCov', Sigma)
 %
 %   Identifies time-varying system matrices A(k), B(k) from state and
 %   input trajectory data for the discrete LTV system:
@@ -28,15 +29,27 @@ function result = sidLTVdisc(X, U, varargin)
 %            {U1, U2, ...} — cell array, (N_l x q) each
 %
 %   NAME-VALUE OPTIONS:
-%     'Lambda'       - Regularization strength. Options:
-%                        scalar   — uniform lambda at all time steps
-%                        (N-1x1)  — per-step lambda vector
-%                        'auto'   — automatic selection via L-curve
-%                      Default: 'auto'.
-%     'Precondition' - Apply block-diagonal preconditioning to improve
-%                      numerical stability. Default: false.
-%     'Algorithm'    - Identification algorithm. Currently only 'cosmic'
-%                      is supported. Default: 'cosmic'.
+%     'Lambda'         - Regularization strength. Options:
+%                          scalar   — uniform lambda at all time steps
+%                          (N-1x1)  — per-step lambda vector
+%                          'auto'   — automatic selection via L-curve
+%                        Default: 'auto'.
+%     'Precondition'   - Apply block-diagonal preconditioning to improve
+%                        numerical stability. Default: false.
+%     'Algorithm'      - Identification algorithm. Currently only 'cosmic'
+%                        is supported. Default: 'cosmic'.
+%     'Uncertainty'    - Compute Bayesian posterior uncertainty for A(k),
+%                        B(k). Doubles computation cost. Default: false.
+%     'NoiseCov'       - Measurement noise covariance. Options:
+%                          (p x p)    — known noise covariance matrix
+%                          'estimate' — estimate from residuals (default)
+%                        Requires 'Uncertainty' to be true (set automatically).
+%     'CovarianceMode' - How to estimate noise covariance (when not
+%                        user-provided). Options:
+%                          'diagonal'  — diagonal Sigma (default)
+%                          'full'      — full p x p covariance
+%                          'isotropic' — scalar * I_p
+%                        Ignored when 'NoiseCov' is a matrix.
 %
 %   OUTPUT:
 %     result - Struct with fields:
@@ -52,6 +65,15 @@ function result = sidLTVdisc(X, U, varargin)
 %       .Preconditioned - logical
 %       .Method         - 'sidLTVdisc'
 %
+%     When 'Uncertainty' is true, these fields are added:
+%       .AStd             - (p x p x N) std dev of A(k) entries
+%       .BStd             - (p x q x N) std dev of B(k) entries
+%       .P                - (d x d x N) row covariance, d = p+q
+%       .NoiseCov         - (p x p) noise covariance (provided or estimated)
+%       .NoiseCovEstimated - logical, true if estimated from residuals
+%       .NoiseVariance    - scalar, trace(NoiseCov)/p
+%       .DegreesOfFreedom - effective d.o.f. (NaN if NoiseCov provided)
+%
 %   EXAMPLES:
 %     % Basic identification with automatic lambda
 %     result = sidLTVdisc(X, U);
@@ -59,17 +81,23 @@ function result = sidLTVdisc(X, U, varargin)
 %     % Manual uniform lambda
 %     result = sidLTVdisc(X, U, 'Lambda', 1e5);
 %
+%     % With uncertainty estimation
+%     result = sidLTVdisc(X, U, 'Lambda', 1e5, 'Uncertainty', true);
+%
+%     % With known noise covariance
+%     Sigma = diag([0.01, 0.05]);  % known from sensor specs
+%     result = sidLTVdisc(X, U, 'Lambda', 1e5, 'NoiseCov', Sigma);
+%
 %     % Per-step lambda (lower near a known transient at step 50)
 %     lam = 1e5 * ones(N-1, 1);
 %     lam(48:52) = 1e2;
 %     result = sidLTVdisc(X, U, 'Lambda', lam);
 %
-%     % With preconditioning
-%     result = sidLTVdisc(X, U, 'Lambda', 1e5, 'Precondition', true);
-%
 %   ALGORITHM:
 %     COSMIC: Closed-form solution via block tridiagonal LU decomposition.
 %     Forward pass computes Lbd_k and Y_k; backward pass recovers C(k).
+%     Uncertainty: backward recursion on P(k) = [A^{-1}]_{kk} reusing
+%     stored Lbd_k, then Cov(vec(C(k))) = Sigma \otimes P(k).
 %     Complexity: O(N * (p+q)^3), linear in time steps.
 %
 %   REFERENCE:
@@ -77,10 +105,11 @@ function result = sidLTVdisc(X, U, varargin)
 %     identification from large-scale data for LTV systems."
 %     arXiv:2112.04355, 2022.
 %
-%   See also: sidLTVdiscTune, sidFreqMap
+%   See also: sidLTVdiscTune, sidLTVdiscFrozen, sidFreqMap
 
     % ---- Parse inputs ----
-    [X, U, lambda, doPrecondition, algorithm, N, p, q, L, isVarLen, horizons] = ...
+    [X, U, lambda, doPrecondition, algorithm, doUncertainty, ...
+     noiseCov, covMode, N, p, q, L, isVarLen, horizons] = ...
         parseInputs(X, U, varargin{:});
 
     % ---- Build data matrices ----
@@ -108,7 +137,7 @@ function result = sidLTVdisc(X, U, varargin)
     end
 
     % ---- COSMIC forward-backward pass ----
-    C = cosmicSolve(S, T, lambda, N, p, q);
+    [C, Lbd] = cosmicSolve(S, T, lambda, N, p, q);
 
     % ---- Extract A(k), B(k) ----
     A = permute(C(1:p, :, :), [2 1 3]);       % (p x p x N)
@@ -129,6 +158,37 @@ function result = sidLTVdisc(X, U, varargin)
     result.Algorithm       = algorithm;
     result.Preconditioned  = doPrecondition;
     result.Method          = 'sidLTVdisc';
+
+    % ---- Uncertainty (Phase 8b) ----
+    if doUncertainty
+        d = p + q;
+
+        % Compute P(k) = [A_unscaled^{-1}]_{kk} using the unscaled Hessian.
+        % COSMIC normalizes data by 1/sqrt(N), so the scaled Hessian uses
+        % D_s'D_s = D'D/N. The posterior Cov(vec(C(k))) = Sigma x P(k)
+        % requires the unscaled Hessian where D'D appears without the 1/N.
+        P = uncertaintyBackwardPass(S, lambda, N, d);
+
+        % Noise covariance
+        noiseCovProvided = ~ischar(noiseCov);
+        if noiseCovProvided
+            Sigma = noiseCov;
+            dof = NaN;
+        else
+            [Sigma, dof] = estimateNoiseCov(C, D, Xl, P, covMode, N, p, q, isVarLen, horizons);
+        end
+
+        % Standard deviations of A(k), B(k) entries
+        [AStd, BStd] = extractStd(P, Sigma, N, p, q);
+
+        result.AStd             = AStd;
+        result.BStd             = BStd;
+        result.P                = P;
+        result.NoiseCov         = Sigma;
+        result.NoiseCovEstimated = ~noiseCovProvided;
+        result.NoiseVariance    = trace(Sigma) / p;
+        result.DegreesOfFreedom = dof;
+    end
 end
 
 
@@ -136,7 +196,8 @@ end
 %  LOCAL FUNCTIONS
 % ========================================================================
 
-function [X, U, lambda, doPrecondition, algorithm, N, p, q, L, isVarLen, horizons] = ...
+function [X, U, lambda, doPrecondition, algorithm, doUncertainty, ...
+         noiseCov, covMode, N, p, q, L, isVarLen, horizons] = ...
         parseInputs(X, U, varargin)
 %PARSEINPUTS Validate and parse inputs for sidLTVdisc.
 %   Supports both 3D array input (uniform horizon) and cell array input
@@ -240,6 +301,9 @@ function [X, U, lambda, doPrecondition, algorithm, N, p, q, L, isVarLen, horizon
     lambda = 'auto';
     doPrecondition = false;
     algorithm = 'cosmic';
+    doUncertainty = false;
+    noiseCov = 'estimate';
+    covMode = 'diagonal';
 
     k = 1;
     while k <= length(varargin)
@@ -258,12 +322,26 @@ function [X, U, lambda, doPrecondition, algorithm, N, p, q, L, isVarLen, horizon
                             'Only ''cosmic'' is supported in v1.0. Got ''%s''.', algorithm);
                     end
                     k = k + 2;
+                case 'uncertainty'
+                    doUncertainty = varargin{k+1};
+                    k = k + 2;
+                case 'noisecov'
+                    noiseCov = varargin{k+1};
+                    k = k + 2;
+                case 'covariancemode'
+                    covMode = varargin{k+1};
+                    k = k + 2;
                 otherwise
                     error('sid:unknownOption', 'Unknown option: %s', varargin{k});
             end
         else
             error('sid:badInput', 'Expected option name at position %d.', k);
         end
+    end
+
+    % If NoiseCov is provided as a matrix, enable uncertainty automatically
+    if ~ischar(noiseCov)
+        doUncertainty = true;
     end
 
     % Validate lambda
@@ -284,6 +362,28 @@ function [X, U, lambda, doPrecondition, algorithm, N, p, q, L, isVarLen, horizon
             end
         end
     end
+
+    % Validate NoiseCov
+    if ~ischar(noiseCov)
+        if ~isnumeric(noiseCov) || ~ismatrix(noiseCov)
+            error('sid:badNoiseCov', 'NoiseCov must be a p x p matrix or ''estimate''.');
+        end
+        if size(noiseCov, 1) ~= p || size(noiseCov, 2) ~= p
+            error('sid:badNoiseCov', ...
+                'NoiseCov must be %d x %d (matching state dimension p), got %d x %d.', ...
+                p, p, size(noiseCov, 1), size(noiseCov, 2));
+        end
+        if any(~isfinite(noiseCov(:)))
+            error('sid:badNoiseCov', 'NoiseCov contains NaN or Inf.');
+        end
+    end
+
+    % Validate CovarianceMode
+    if ~ismember(lower(covMode), {'full', 'diagonal', 'isotropic'})
+        error('sid:badCovMode', ...
+            'CovarianceMode must be ''full'', ''diagonal'', or ''isotropic''. Got ''%s''.', covMode);
+    end
+    covMode = lower(covMode);
 end
 
 
@@ -409,7 +509,7 @@ function [S, T, lambda] = precondition(S, T, lambda, N, p, q)
 end
 
 
-function C = cosmicSolve(S, T, lambda, N, p, q)
+function [C, Lbd] = cosmicSolve(S, T, lambda, N, p, q)
 %COSMICSOLVE COSMIC forward-backward pass.
 %
 %   Solves the block tridiagonal system arising from the regularized
@@ -417,6 +517,9 @@ function C = cosmicSolve(S, T, lambda, N, p, q)
 %
 %   Forward pass: compute Lbd_k and Y_k for k = 0..N-1
 %   Backward pass: recover C(k) for k = N-2..0
+%
+%   Returns Lbd (the forward Schur complements) for use in uncertainty
+%   computation.
 
     d = p + q;
     Lbd = zeros(d, d, N);
@@ -496,7 +599,7 @@ function bestLambda = lcurveLambda(D, Xl, N, p, q, doPrecondition)
         if doPrecondition
             [S, T, lam] = precondition(S, T, lam, N, p, q);
         end
-        C = cosmicSolve(S, T, lam, N, p, q);
+        [C, ~] = cosmicSolve(S, T, lam, N, p, q);
 
         A = permute(C(1:p, :, :), [2 1 3]);
         B = permute(C(p+1:end, :, :), [2 1 3]);
@@ -528,4 +631,168 @@ function bestLambda = lcurveLambda(D, Xl, N, p, q, doPrecondition)
 
     [~, idx] = max(kappa);
     bestLambda = grid(idx);
+end
+
+
+function P = uncertaintyBackwardPass(S_scaled, lambda, N, d)
+%UNCERTAINTYBACKWARDPASS Compute P(k) = [A_unscaled^{-1}]_{kk}.
+%
+%   The COSMIC algorithm normalizes data by 1/sqrt(N), so S_scaled contains
+%   D_s'D_s + regularization. The posterior covariance requires the UNSCALED
+%   Hessian where D'D = N * D_s'D_s appears. This function reconstructs the
+%   unscaled diagonal blocks, then computes left and right Schur complements
+%   to obtain the diagonal blocks of the inverse.
+%
+%   P(k) = (Lbd_k^L + Lbd_k^R - S_kk)^{-1}
+%
+%   Complexity: O(N * d^3).
+
+    I = eye(d);
+
+    % ---- Reconstruct unscaled diagonal blocks S_u(k) = N*DtD(k) + reg(k) ----
+    S = zeros(d, d, N);
+    for k = 1:N
+        if k == 1
+            reg = lambda(1) * I;
+        elseif k == N
+            reg = lambda(N-1) * I;
+        else
+            reg = (lambda(k-1) + lambda(k)) * I;
+        end
+        DtD_scaled = S_scaled(:, :, k) - reg;
+        S(:, :, k) = N * DtD_scaled + reg;
+    end
+
+    % ---- Left Schur complements (forward) ----
+    LbdL = zeros(d, d, N);
+    LbdL(:, :, 1) = S(:, :, 1);
+    for k = 2:N
+        LbdL(:, :, k) = S(:, :, k) - lambda(k-1)^2 * (LbdL(:, :, k-1) \ I);
+    end
+
+    % ---- Right Schur complements (backward) ----
+    LbdR = zeros(d, d, N);
+    LbdR(:, :, N) = S(:, :, N);
+    for k = N-1:-1:1
+        LbdR(:, :, k) = S(:, :, k) - lambda(k)^2 * (LbdR(:, :, k+1) \ I);
+    end
+
+    % ---- Combine: P(k) = (LbdL(k) + LbdR(k) - S(k))^{-1} ----
+    P = zeros(d, d, N);
+    for k = 1:N
+        M = LbdL(:, :, k) + LbdR(:, :, k) - S(:, :, k);
+        P(:, :, k) = M \ I;
+    end
+end
+
+
+function [Sigma, dof] = estimateNoiseCov(C, D, Xl, P, covMode, N, p, q, isVarLen, horizons)
+%ESTIMATENOISECOV Estimate noise covariance from COSMIC residuals.
+%
+%   The data D and Xl are scaled by 1/sqrt(N) (COSMIC convention). The
+%   scaled residuals E_s(k) have noise covariance Sigma/N. This function
+%   returns the UNSCALED noise covariance Sigma by multiplying by N.
+%
+%   The degrees of freedom use the unscaled hat-matrix trace:
+%     nu = sum_k |L(k)| - N * sum_k trace(D_s(k)'D_s(k) * P(k))
+%   where P(k) is from the unscaled Hessian.
+
+    d = p + q;
+    useCell = iscell(D);
+
+    % Accumulate scaled residual scatter matrix and count observations
+    SSR_scaled = zeros(p, p);  % sum of E_s(k)' * E_s(k)
+    totalObs = 0;
+
+    for k = 1:N
+        Ck = C(:, :, k);
+        if useCell
+            Dk  = D{k};
+            Xlk = Xl{k};
+            Lk  = size(Dk, 1);
+        else
+            Dk  = D(:, :, k);
+            Xlk = Xl(:, :, k);
+            Lk  = size(Dk, 1);
+        end
+
+        if Lk == 0
+            continue;
+        end
+
+        Ek = Xlk - Dk * Ck;  % (Lk x p), scaled residuals
+        SSR_scaled = SSR_scaled + Ek' * Ek;
+        totalObs = totalObs + Lk;
+    end
+
+    % Exact degrees of freedom using unscaled hat-matrix trace:
+    % trace(V_u'V_u A_u^{-1}) = N * sum_k trace(D_s'D_s * P_u(k))
+    traceSum = 0;
+    for k = 1:N
+        if useCell
+            Dk = D{k};
+        else
+            Dk = D(:, :, k);
+        end
+        if size(Dk, 1) > 0
+            DtD = Dk' * Dk;  % (d x d), scaled
+            traceSum = traceSum + sum(sum(DtD .* P(:, :, k)));  % trace(DtD_s * P_u(k))
+        end
+    end
+
+    dof = totalObs - N * traceSum;
+
+    % Conservative fallback if exact dof is non-positive
+    if dof <= 0
+        dof = totalObs - N * d;
+        if dof <= 0
+            dof = max(totalObs, 1);
+        end
+    end
+
+    % Unscaled noise covariance: scaled residuals have variance Sigma/N,
+    % so Sigma = N * SSR_scaled / dof
+    Sigma = N * SSR_scaled / dof;
+
+    % Apply covariance mode restriction
+    switch covMode
+        case 'diagonal'
+            Sigma = diag(diag(Sigma));
+        case 'isotropic'
+            Sigma = (trace(Sigma) / p) * eye(p);
+        case 'full'
+            % Keep as is
+    end
+end
+
+
+function [AStd, BStd] = extractStd(P, Sigma, N, p, q)
+%EXTRACTSTD Compute standard deviations of A(k) and B(k) entries.
+%
+%   Var(A(k)_{ba}) = Sigma_{bb} * P(k)_{aa}       for a = 1,...,p
+%   Var(B(k)_{ba}) = Sigma_{bb} * P(k)_{p+a,p+a}  for a = 1,...,q
+%
+%   Note: C(k) = [A(k)'; B(k)'], so row a of C(k) corresponds to:
+%     a = 1..p   -> row a of A(k)' -> column a of A(k) -> A(k)_{:,a}
+%     a = p+1..d -> row (a-p) of B(k)' -> column (a-p) of B(k) -> B(k)_{:,a-p}
+
+    AStd = zeros(p, p, N);
+    BStd = zeros(p, q, N);
+
+    sigDiag = diag(Sigma);  % (p x 1)
+
+    for k = 1:N
+        pDiag = diag(P(:, :, k));  % (d x 1)
+
+        % A(k)_{b,a} = C(k)_{a,b}, Var = Sigma_{bb} * P(k)_{aa}
+        % AStd(b,a,k) = sqrt(Sigma_{bb} * P(k)_{aa})
+        for a = 1:p
+            AStd(:, a, k) = sqrt(sigDiag * pDiag(a));
+        end
+
+        % B(k)_{b,a} = C(k)_{p+a,b}, Var = Sigma_{bb} * P(k)_{p+a,p+a}
+        for a = 1:q
+            BStd(:, a, k) = sqrt(sigDiag * pDiag(p + a));
+        end
+    end
 end
