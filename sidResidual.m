@@ -168,7 +168,7 @@ function [e, N] = computeResidualSS(model, X, U)
 
         for k = 1:Nm
             x_pred = model.A(:, :, k) * Xl(k, :)' + model.B(:, :, k) * Ul(k, :)';
-            e_all(k, :) = e_all(k, :) + (Xl(k+1, :) - x_pred')';
+            e_all(k, :) = e_all(k, :) + (Xl(k+1, :) - x_pred');
         end
     end
     e = e_all / L;
