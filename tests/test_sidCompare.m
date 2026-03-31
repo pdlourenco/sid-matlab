@@ -89,15 +89,11 @@ result_plot = sidFreqBT(y, u);
 try
     sidCompare(result_plot, y, u, 'Plot', true);
     close all;
-catch e
-    % In headless environments, allow display-related failures
-    msg = e.message;
-    isDisplayErr = ~isempty(strfind(msg, 'figure')) || ~isempty(strfind(msg, 'display')) ...
-        || ~isempty(strfind(msg, 'DISPLAY')) || ~isempty(strfind(msg, 'java'));
-    if ~isDisplayErr
-        rethrow(e);
-    end
+    plotOk = true;
+catch
+    plotOk = false;
 end
+assert(plotOk, 'Plot option should not error');
 fprintf('  Test 5 passed: plot option works.\n');
 
 %% Test 6: Output struct fields
