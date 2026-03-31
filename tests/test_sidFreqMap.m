@@ -166,7 +166,9 @@ magMap_w = abs(result_w.Response);
 meanMag_w = mean(magMap_w, 2);
 stdMag_w = std(magMap_w, 0, 2);
 cv_w = stdMag_w ./ max(meanMag_w, eps);
-assert(median(cv_w) < 0.5, 'Welch LTI map should be roughly constant (median CV = %.2f)', median(cv_w));
+assert(median(cv_w) < 0.5, ...
+    'Welch LTI map should be roughly constant (median CV = %.2f)', ...
+    median(cv_w));
 fprintf('  Test 20 passed: Welch LTI constancy check\n');
 
 %% Test 21: Welch - Time axis alignment with sidSpectrogram
@@ -200,7 +202,9 @@ mag_wl = mean(abs(res_wl.Response), 2);
 % Interpolate Welch onto BT frequency grid for comparison
 mag_wl_interp = interp1(res_wl.Frequency, mag_wl, res_bt.Frequency, 'linear', 'extrap');
 corr_mat = corrcoef(mag_bt, mag_wl_interp);
-assert(corr_mat(1,2) > 0.8, 'BT and Welch magnitude shapes should correlate (r=%.2f)', corr_mat(1,2));
+assert(corr_mat(1,2) > 0.8, ...
+    'BT and Welch magnitude shapes should correlate (r=%.2f)', ...
+    corr_mat(1,2));
 fprintf('  Test 23 passed: BT and Welch correlated (r=%.4f)\n', corr_mat(1,2));
 
 fprintf('test_sidFreqMap: ALL TESTS PASSED\n');

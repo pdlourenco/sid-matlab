@@ -1,5 +1,5 @@
 function sidInstall()
-%SIDINSTALL Add the sid package to the MATLAB/Octave path.
+% SIDINSTALL Add the sid package to the MATLAB/Octave path.
 %
 %   sidInstall
 %
@@ -16,7 +16,7 @@ function sidInstall()
 %   This code is released under the MIT License. See LICENSE file in the
 %   project root for full license information.
 %
-%   This function is part of the Open Source System Identification 
+%   This function is part of the Open Source System Identification
 %   Toolbox (SID).
 %   For full documentation and examples, visit
 %   https://github.com/pdlourenco/sid-matlab

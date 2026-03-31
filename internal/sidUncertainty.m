@@ -1,5 +1,5 @@
 function [GStd, PhiVStd] = sidUncertainty(G, PhiV, Coh, N, W, nTraj)
-%SIDUNCERTAINTY Asymptotic standard deviations for spectral estimates.
+% SIDUNCERTAINTY Asymptotic standard deviations for spectral estimates.
 %
 %   [GStd, PhiVStd] = sidUncertainty(G, PhiV, Coh, N, W)
 %   [GStd, PhiVStd] = sidUncertainty(G, PhiV, Coh, N, W, nTraj)
@@ -35,7 +35,7 @@ function [GStd, PhiVStd] = sidUncertainty(G, PhiV, Coh, N, W, nTraj)
 %   This code is released under the MIT License. See LICENSE file in the
 %   project root for full license information.
 %
-%   This function is part of the Open Source System Identification 
+%   This function is part of the Open Source System Identification
 %   Toolbox (SID).
 %   For full documentation and examples, visit
 %   https://github.com/pdlourenco/sid-matlab
@@ -66,8 +66,8 @@ function [GStd, PhiVStd] = sidUncertainty(G, PhiV, Coh, N, W, nTraj)
     if ~isempty(Coh)
         % SISO case
         % Var{G} = (C_W / Neff) * |G|^2 * (1 - gamma^2) / gamma^2
-        eps = 1e-10;
-        cohSafe = max(Coh, eps);
+        eps_floor = 1e-10;
+        cohSafe = max(Coh, eps_floor);
         GVar = (CW / Neff) .* abs(G).^2 .* (1 - cohSafe) ./ cohSafe;
         GStd = sqrt(GVar);
     else

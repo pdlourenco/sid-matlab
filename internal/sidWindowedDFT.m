@@ -1,5 +1,5 @@
 function Phi = sidWindowedDFT(R, W, freqs, useFFT, Rneg)
-%SIDWINDOWEDDFT Windowed Fourier transform of covariance estimates.
+% SIDWINDOWEDDFT Windowed Fourier transform of covariance estimates.
 %
 %   Phi = sidWindowedDFT(R, W, freqs, useFFT)
 %   Phi = sidWindowedDFT(R, W, freqs, useFFT, Rneg)
@@ -44,7 +44,7 @@ function Phi = sidWindowedDFT(R, W, freqs, useFFT, Rneg)
 %   This code is released under the MIT License. See LICENSE file in the
 %   project root for full license information.
 %
-%   This function is part of the Open Source System Identification 
+%   This function is part of the Open Source System Identification
 %   Toolbox (SID).
 %   For full documentation and examples, visit
 %   https://github.com/pdlourenco/sid-matlab
@@ -99,9 +99,8 @@ function Phi = sidWindowedDFT(R, W, freqs, useFFT, Rneg)
     end
 end
 
-
 function Phi = windowedDFT_FFT(R, W, nf, Rneg)
-%WINDOWEDDFT_FFT FFT fast path for default linear frequency grid.
+% WINDOWEDDFT_FFT FFT fast path for default linear frequency grid.
 %
 %   Assumes frequencies are (1:nf) * pi / nf, i.e. the bins produced by
 %   a length-2*nf FFT.
@@ -138,12 +137,11 @@ function Phi = windowedDFT_FFT(R, W, nf, Rneg)
 
     % Extract bins 2..nf+1 (skipping DC at bin 1).
     % Bin k+1 corresponds to frequency k * 2*pi / L = k * pi / nf.
-    Phi = S(2 : nf + 1);
+    Phi = S(2:nf + 1);
 end
 
-
 function Phi = windowedDFT_direct(R, W, freqs, Rneg)
-%WINDOWEDDFT_DIRECT Direct DFT at arbitrary frequencies.
+% WINDOWEDDFT_DIRECT Direct DFT at arbitrary frequencies.
 
     M = length(W) - 1;
     nf = length(freqs);

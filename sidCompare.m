@@ -1,5 +1,5 @@
 function result = sidCompare(model, y, u, varargin)
-%SIDCOMPARE Compare model predicted output to measured data.
+% SIDCOMPARE Compare model predicted output to measured data.
 %
 %   result = sidCompare(model, y, u)
 %   result = sidCompare(model, y, u, 'InitialState', x0)
@@ -94,13 +94,12 @@ function result = sidCompare(model, y, u, varargin)
     end
 end
 
-
 % ========================================================================
 %  LOCAL FUNCTIONS
 % ========================================================================
 
 function [y_pred, y_meas] = simulateSS(model, X, U, x0)
-%SIMULATESS Simulate state-space model and return predicted vs measured.
+% SIMULATESS Simulate state-space model and return predicted vs measured.
 
     Nm = model.DataLength;
     p = model.StateDim;
@@ -147,9 +146,8 @@ function [y_pred, y_meas] = simulateSS(model, X, U, x0)
     y_pred = y_pred_sum / L;
 end
 
-
 function [y_pred, y_meas] = simulateFreq(model, y, u)
-%SIMULATEFREQ Simulate frequency-domain model output via IFFT.
+% SIMULATEFREQ Simulate frequency-domain model output via IFFT.
 
     if isvector(y)
         y = y(:);
@@ -213,9 +211,8 @@ function [y_pred, y_meas] = simulateFreq(model, y, u)
     y_meas = y;
 end
 
-
 function plotComparison(y_meas, y_pred, fitVec, methodName)
-%PLOTCOMPARISON Overlay measured and predicted outputs.
+% PLOTCOMPARISON Overlay measured and predicted outputs.
 
     ny = size(y_meas, 2);
     N = size(y_meas, 1);

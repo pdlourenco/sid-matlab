@@ -265,6 +265,7 @@ errA = norm(A_mean - A_true, 'fro') / norm(A_true, 'fro');
 errB = norm(B_mean - B_true, 'fro') / norm(B_true, 'fro');
 assert(errA < 0.01, 'Noiseless LTI A recovery should be near-exact: %.4f', errA);
 assert(errB < 0.01, 'Noiseless LTI B recovery should be near-exact: %.4f', errB);
-fprintf('  Test 13 passed: noiseless LTI near-exact recovery (errA=%.6f, errB=%.6f).\n', errA, errB);
+fprintf(['  Test 13 passed: noiseless LTI near-exact recovery' ...
+    ' (errA=%.6f, errB=%.6f).\n'], errA, errB);
 
 fprintf('test_sidLTVdisc: ALL TESTS PASSED\n');

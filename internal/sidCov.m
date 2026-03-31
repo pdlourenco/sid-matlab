@@ -1,5 +1,5 @@
 function R = sidCov(x, z, maxLag)
-%SIDCOV Biased cross-covariance estimate for lags 0..maxLag.
+% SIDCOV Biased cross-covariance estimate for lags 0..maxLag.
 %
 %   R = sidCov(x, z, maxLag)
 %
@@ -39,7 +39,7 @@ function R = sidCov(x, z, maxLag)
 %   This code is released under the MIT License. See LICENSE file in the
 %   project root for full license information.
 %
-%   This function is part of the Open Source System Identification 
+%   This function is part of the Open Source System Identification
 %   Toolbox (SID).
 %   For full documentation and examples, visit
 %   https://github.com/pdlourenco/sid-matlab
@@ -61,14 +61,14 @@ function R = sidCov(x, z, maxLag)
     if L == 1
         % Single trajectory (original path)
         for tau = 0:maxLag
-            R(tau + 1, :, :) = (x(tau + 1 : N, :)' * z(1 : N - tau, :)) / N;
+            R(tau + 1, :, :) = (x(tau + 1:N, :)' * z(1:N - tau, :)) / N;
         end
     else
         % Multi-trajectory: ensemble-average per-trajectory covariances
         for tau = 0:maxLag
             Rsum = zeros(p, q);
             for l = 1:L
-                Rsum = Rsum + x(tau + 1 : N, :, l)' * z(1 : N - tau, :, l);
+                Rsum = Rsum + x(tau + 1:N, :, l)' * z(1:N - tau, :, l);
             end
             R(tau + 1, :, :) = Rsum / (L * N);
         end

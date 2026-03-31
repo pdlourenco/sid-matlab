@@ -1,5 +1,5 @@
 function result = sidFreqBT(y, u, varargin)
-%SIDFREQBT Estimate frequency response via Blackman-Tukey spectral analysis.
+% SIDFREQBT Estimate frequency response via Blackman-Tukey spectral analysis.
 %
 %   result = sidFreqBT(y, u)
 %   result = sidFreqBT(y, [])
@@ -164,9 +164,8 @@ function result = sidFreqBT(y, u, varargin)
     result.Method           = 'sidFreqBT';
 end
 
-
 function tf = isDefaultFreqs(freqs, nf)
-%ISDEFAULTFREQS Check if frequency vector matches the default linear grid.
+% ISDEFAULTFREQS Check if frequency vector matches the default linear grid.
     if nf ~= 128
         tf = false;
         return;

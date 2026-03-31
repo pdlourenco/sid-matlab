@@ -1,5 +1,5 @@
 function [y, u, N, ny, nu, isTimeSeries, nTraj] = sidValidateData(y, u)
-%SIDVALIDATEDATA Validate and orient data for sidFreq* functions.
+% SIDVALIDATEDATA Validate and orient data for sidFreq* functions.
 %
 %   [y, u, N, ny, nu, isTimeSeries, nTraj] = sidValidateData(y, u)
 %
@@ -36,7 +36,7 @@ function [y, u, N, ny, nu, isTimeSeries, nTraj] = sidValidateData(y, u)
 %   This code is released under the MIT License. See LICENSE file in the
 %   project root for full license information.
 %
-%   This function is part of the Open Source System Identification 
+%   This function is part of the Open Source System Identification
 %   Toolbox (SID).
 %   For full documentation and examples, visit
 %   https://github.com/pdlourenco/sid-matlab
@@ -83,7 +83,8 @@ function [y, u, N, ny, nu, isTimeSeries, nTraj] = sidValidateData(y, u)
                 size(u, 1), N);
         end
         if ~isreal(u)
-            error('sid:complexData', 'Complex data is not supported in v1.0. Input u must be real.');
+            error('sid:complexData', ...
+                'Complex data is not supported in v1.0. Input u must be real.');
         end
         if any(~isfinite(u(:)))
             error('sid:nonFinite', 'Data u contains NaN or Inf values.');

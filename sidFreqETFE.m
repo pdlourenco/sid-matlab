@@ -1,5 +1,5 @@
 function result = sidFreqETFE(y, u, varargin)
-%SIDFREQETFE Empirical transfer function estimate.
+% SIDFREQETFE Empirical transfer function estimate.
 %
 %   result = sidFreqETFE(y, u)
 %   result = sidFreqETFE(y, [])
@@ -41,7 +41,7 @@ function result = sidFreqETFE(y, u, varargin)
 %   This code is released under the MIT License. See LICENSE file in the
 %   project root for full license information.
 %
-%   This function is part of the Open Source System Identification 
+%   This function is part of the Open Source System Identification
 %   Toolbox (SID).
 %   For full documentation and examples, visit
 %   https://github.com/pdlourenco/sid-matlab
@@ -297,9 +297,8 @@ function result = sidFreqETFE(y, u, varargin)
     result.Method           = 'sidFreqETFE';
 end
 
-
 function xSmooth = boxcarSmooth(x, S)
-%BOXCARSMOOTH Apply length-S boxcar (moving average) smoothing.
+% BOXCARSMOOTH Apply length-S boxcar (moving average) smoothing.
 %   At boundaries, uses available neighbors (shrinking window).
     nf = length(x);
     xSmooth = zeros(size(x));
@@ -312,9 +311,8 @@ function xSmooth = boxcarSmooth(x, S)
     end
 end
 
-
 function tf = isDefaultFreqs(freqs, nf)
-%ISDEFAULTFREQS Check if frequency vector matches the default linear grid.
+% ISDEFAULTFREQS Check if frequency vector matches the default linear grid.
     if nf ~= 128
         tf = false;
         return;

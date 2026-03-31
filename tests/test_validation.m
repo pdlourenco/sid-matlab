@@ -42,11 +42,15 @@ w = result.Frequency;
 G_true = 1 ./ (1 - a * exp(-1j * w));
 
 mag_err = abs(abs(result.Response) - abs(G_true)) ./ abs(G_true);
-assert(median(mag_err) < 0.03, 'Median magnitude error should be <3%% (got %.1f%%)', median(mag_err)*100);
+assert(median(mag_err) < 0.03, ...
+    'Median magnitude error should be <3%% (got %.1f%%)', ...
+    median(mag_err)*100);
 
 phase_err = abs(angle(result.Response) - angle(G_true));
 phase_err = min(phase_err, 2*pi - phase_err);
-assert(median(phase_err) < 0.05, 'Median phase error should be <0.05 rad (got %.3f)', median(phase_err));
+assert(median(phase_err) < 0.05, ...
+    'Median phase error should be <0.05 rad (got %.3f)', ...
+    median(phase_err));
 
 %% Test 4: FIR system G(z) = 1 + 0.5*z^{-1}
 % |G(e^{jw})| = |1 + 0.5*e^{-jw}|
@@ -59,7 +63,9 @@ w = result.Frequency;
 G_true = 1 + 0.5 * exp(-1j * w);
 
 mag_err = abs(abs(result.Response) - abs(G_true)) ./ abs(G_true);
-assert(median(mag_err) < 0.03, 'FIR magnitude error should be small (got %.1f%%)', median(mag_err)*100);
+assert(median(mag_err) < 0.03, ...
+    'FIR magnitude error should be small (got %.1f%%)', ...
+    median(mag_err)*100);
 
 %% Test 5: Noise variance estimation consistency
 % y = G*u + v, noise variance sigma_v^2 should be recoverable
@@ -141,7 +147,9 @@ assert(abs(R(1) - 25) < 1e-10, 'R(0) of constant=5 should be 25');
 N_const = 100;
 for tau = 0:5
     expected = 25 * (N_const - tau) / N_const;
-    assert(abs(R(tau+1) - expected) < 1e-10, 'Biased cov of constant at lag %d should be %.2f', tau, expected);
+    assert(abs(R(tau+1) - expected) < 1e-10, ...
+        'Biased cov of constant at lag %d should be %.2f', ...
+        tau, expected);
 end
 
 fprintf('  test_validation: ALL PASSED\n');

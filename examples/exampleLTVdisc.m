@@ -254,7 +254,6 @@ legend('show');
 grid on;
 hold off;
 
-
 %% 6. Frequency-Based Lambda Tuning (no validation data needed)
 %
 % sidLTVdiscTune with 'Method','frequency' selects lambda by comparing

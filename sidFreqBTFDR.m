@@ -1,5 +1,5 @@
 function result = sidFreqBTFDR(y, u, varargin)
-%SIDFREQBTFDR Blackman-Tukey spectral analysis with frequency-dependent resolution.
+% SIDFREQBTFDR Blackman-Tukey spectral analysis with frequency-dependent resolution.
 %
 %   result = sidFreqBTFDR(y, u)
 %   result = sidFreqBTFDR(y, [])
@@ -71,7 +71,7 @@ function result = sidFreqBTFDR(y, u, varargin)
 %   This code is released under the MIT License. See LICENSE file in the
 %   project root for full license information.
 %
-%   This function is part of the Open Source System Identification 
+%   This function is part of the Open Source System Identification
 %   Toolbox (SID).
 %   For full documentation and examples, visit
 %   https://github.com/pdlourenco/sid-matlab
@@ -297,9 +297,8 @@ function result = sidFreqBTFDR(y, u, varargin)
     result.Method           = 'sidFreqBTFDR';
 end
 
-
 function Rk = truncateCov(R, Mk, p, q)
-%TRUNCATECOV Extract covariances for lags 0..Mk from a larger array.
+% TRUNCATECOV Extract covariances for lags 0..Mk from a larger array.
     if p == 1 && q == 1
         Rk = R(1:Mk+1);
     else
@@ -307,9 +306,8 @@ function Rk = truncateCov(R, Mk, p, q)
     end
 end
 
-
 function Phi = singleFreqDFT(R, W, w, p, q, Rneg)
-%SINGLEFREQDFT Windowed DFT at a single frequency for matrix signals.
+% SINGLEFREQDFT Windowed DFT at a single frequency for matrix signals.
 %   R:     (Mk+1 x p x q) covariance array
 %   W:     (Mk+1 x 1) window values
 %   w:     scalar frequency (rad/sample)
@@ -343,9 +341,8 @@ function Phi = singleFreqDFT(R, W, w, p, q, Rneg)
     end
 end
 
-
 function val = scalarSingleFreqDFT(R, W, w, Rneg)
-%SCALARSINGLEFREQDFT Windowed DFT at one frequency for scalar covariance.
+% SCALARSINGLEFREQDFT Windowed DFT at one frequency for scalar covariance.
 %   R:    (M+1 x 1) covariance for lags 0..M
 %   W:    (M+1 x 1) window values
 %   w:    scalar frequency

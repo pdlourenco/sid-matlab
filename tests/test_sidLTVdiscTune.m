@@ -23,7 +23,9 @@ for l = 1:L_train
     X_train(1, :, l) = randn(1, p);
     for k = 1:N
         Ak = A0 + (k / N) * dA;
-        X_train(k+1, :, l) = (Ak * X_train(k, :, l)' + B_true * U_train(k, :, l)')' + sigma * randn(1, p);
+        X_train(k+1, :, l) = (Ak * X_train(k, :, l)' + ...
+            B_true * U_train(k, :, l)')' + ...
+            sigma * randn(1, p);
     end
 end
 for l = 1:L_val

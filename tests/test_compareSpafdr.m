@@ -39,7 +39,8 @@ assert(relErr_med < 0.05, ...
     'Test 1: response median relErr=%.6f should be <5%%', relErr_med);
 
 % Noise spectrum comparison
-relErr_noise = median(abs(real(result_sid.NoiseSpectrum) - spec_spafdr) ./ max(abs(spec_spafdr), 1e-10));
+relErr_noise = median(abs(real(result_sid.NoiseSpectrum) - ...
+    spec_spafdr) ./ max(abs(spec_spafdr), 1e-10));
 assert(relErr_noise < 0.10, ...
     'Test 1: noise spectrum median relErr=%.6f should be <10%%', relErr_noise);
 

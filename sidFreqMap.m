@@ -1,5 +1,5 @@
 function result = sidFreqMap(y, u, varargin)
-%SIDFREQMAP Time-varying frequency response map.
+% SIDFREQMAP Time-varying frequency response map.
 %
 %   result = sidFreqMap(y, u)
 %   result = sidFreqMap(y, [], 'SegmentLength', 256)
@@ -305,15 +305,15 @@ function result = sidFreqMap(y, u, varargin)
             NSStd(:, idx, :, :) = reshape(rk.NoiseSpectrumStd, [], 1, ny, ny);
         end
     end
-end
 
+end
 
 % ========================================================================
 %  WELCH INNER ESTIMATOR
 % ========================================================================
 
 function result = welchEstimate(y, u, isTimeSeries, ny, nu, Lsub, Psub, nfft, winType, Ts)
-%WELCHESTIMATE Welch averaged periodogram estimate within one segment.
+% WELCHESTIMATE Welch averaged periodogram estimate within one segment.
 %
 %   Returns a result struct with the same fields as sidFreqBT output.
 %   Supports multi-trajectory input: y is (Lseg x ny x L), u is (Lseg x nu x L).
