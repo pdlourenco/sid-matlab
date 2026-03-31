@@ -50,7 +50,7 @@ x = [3*t + 10 + randn(N,1), -2*t + 50 + randn(N,1), 0.5*t.^2 + randn(N,1)];
 
 [x_dt, trend] = sidDetrend(x);
 assert(isequal(size(x_dt), [N, 3]), 'Output should be N x 3');
-assert(max(abs(x - (x_dt + trend)), [], 'all') < 1e-12, ...
+assert(max(abs(x(:) - (x_dt(:) + trend(:)))) < 1e-12, ...
     'Reconstruction must hold for all channels');
 fprintf('  Test 4 passed: multi-channel detrending.\n');
 
@@ -81,7 +81,7 @@ end
 
 [x3_dt, trend3] = sidDetrend(x3);
 assert(isequal(size(x3_dt), [N, 1, L]), 'Output should preserve 3D shape');
-assert(max(abs(x3 - (x3_dt + trend3)), [], 'all') < 1e-12, ...
+assert(max(abs(x3(:) - (x3_dt(:) + trend3(:)))) < 1e-12, ...
     'Reconstruction must hold for 3D input');
 fprintf('  Test 6 passed: multi-trajectory (3D) detrending.\n');
 
