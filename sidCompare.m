@@ -224,9 +224,9 @@ function plotComparison(y_meas, y_pred, fitVec, methodName)
         plot(t, y_pred(:, ch), 'r--', 'LineWidth', 1);
         hold off;
         if ny > 1
-            title(sprintf('Channel %d — Fit: %.1f%%', ch, fitVec(ch)));
+            title(sprintf('Channel %d - Fit: %.1f%%', ch, fitVec(ch)));
         else
-            title(sprintf('Model: %s — Fit: %.1f%%', methodName, fitVec(ch)));
+            title(sprintf('Model: %s - Fit: %.1f%%', methodName, fitVec(ch)));
         end
         xlabel('Sample');
         ylabel('Output');
