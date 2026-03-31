@@ -266,10 +266,8 @@ function G_interp = interpG(freqs_model, G, freqs_target)
 %   Uses linear interpolation of real and imaginary parts.
 %   Always returns a column vector.
 
-    % Use 0 as extrap value for Octave compatibility (avoids sq_string error
-    % with 'extrap' argument in some Octave versions)
-    G_interp = interp1(freqs_model(:), real(G(:)), freqs_target(:), 'linear', 0) + ...
-        1i * interp1(freqs_model(:), imag(G(:)), freqs_target(:), 'linear', 0);
+    G_interp = interp1(freqs_model(:), real(G(:)), freqs_target(:), 'linear', 'extrap') + ...
+        1i * interp1(freqs_model(:), imag(G(:)), freqs_target(:), 'linear', 'extrap');
     G_interp = G_interp(:);  % ensure column
 end
 
@@ -288,26 +286,37 @@ function plotResidualDiagnostics(autoCorr, crossCorr, confBound, maxLag, isTimeS
     % Top panel: autocorrelation
     subplot(nPanels, 1, 1);
     lags_auto = (0:maxLag)';
-    stem(lags_auto, autoCorr);
+    bar(lags_auto, autoCorr, 0.5, 'FaceColor', [0.3 0.5 0.8]);
     hold on;
     plot([0 maxLag], [confBound confBound], 'r--', 'LineWidth', 1);
     plot([0 maxLag], [-confBound -confBound], 'r--', 'LineWidth', 1);
-    hold off;
+    % Highlight violations
+    violations = abs(autoCorr(2:end)) >= confBound;
+    if any(violations)
+        vIdx = find(violations);
+        bar(vIdx, autoCorr(vIdx + 1), 0.5, 'FaceColor', [0.9 0.2 0.2]);
+    end
     xlabel('Lag');
     ylabel('r_{ee}(\tau)');
     title('Residual Autocorrelation (Whiteness Test)');
+    hold off;
 
     % Bottom panel: cross-correlation
     if ~isTimeSeries && ~isempty(crossCorr)
         subplot(nPanels, 1, 2);
         lags_cross = (-maxLag:maxLag)';
-        stem(lags_cross, crossCorr);
+        bar(lags_cross, crossCorr, 0.5, 'FaceColor', [0.3 0.5 0.8]);
         hold on;
         plot([-maxLag maxLag], [confBound confBound], 'r--', 'LineWidth', 1);
         plot([-maxLag maxLag], [-confBound -confBound], 'r--', 'LineWidth', 1);
-        hold off;
+        violations_c = abs(crossCorr) >= confBound;
+        if any(violations_c)
+            vIdx_c = find(violations_c);
+            bar(lags_cross(vIdx_c), crossCorr(vIdx_c), 0.5, 'FaceColor', [0.9 0.2 0.2]);
+        end
         xlabel('Lag');
         ylabel('r_{eu}(\tau)');
         title('Residual-Input Cross-Correlation (Independence Test)');
+        hold off;
     end
 end
