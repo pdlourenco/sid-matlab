@@ -1244,7 +1244,7 @@ Select `λ* = max{λ : S(λ) > 0.90}` — the largest λ for which at least 90% 
 
 ### 8.12 Output-COSMIC: Partial State Observation (`sidLTVdiscIO`)
 
-**Theory:** `docs/sid_cosmic_output_theory.md`
+**Theory:** `docs/cosmic_output.md`
 
 #### 8.12.1 Problem Statement
 
