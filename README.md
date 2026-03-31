@@ -25,7 +25,7 @@ sid is designed from the ground up to run on **GNU Octave** as a first-class tar
 - **Confidence-band plotting** — `sidBodePlot`, `sidSpectrumPlot`, `sidMapPlot`, and `sidSpectrogramPlot` render shaded confidence bands out of the box
 - **SISO, MIMO, and time-series modes** — unified API across all frequency-domain estimation functions
 - **Validated against MATLAB's System Identification Toolbox** — comparison tests for `spa`, `spafdr`, and `etfe` run in CI
-- **25 test suites** with continuous integration on both MATLAB and GNU Octave
+- **30 test suites** with continuous integration on both MATLAB and GNU Octave
 
 ## How It Works
 
