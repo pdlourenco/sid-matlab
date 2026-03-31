@@ -277,37 +277,28 @@ function plotResidualDiagnostics(autoCorr, crossCorr, confBound, maxLag, isTimeS
     % Top panel: autocorrelation
     subplot(nPanels, 1, 1);
     lags_auto = (0:maxLag)';
-    bar(lags_auto, autoCorr, 0.5, 'FaceColor', [0.3 0.5 0.8]);
+    h = bar(lags_auto, autoCorr, 0.5);
+    set(h, 'FaceColor', [0.3 0.5 0.8]);
     hold on;
     plot([0 maxLag], [confBound confBound], 'r--', 'LineWidth', 1);
     plot([0 maxLag], [-confBound -confBound], 'r--', 'LineWidth', 1);
-    % Highlight violations
-    violations = abs(autoCorr(2:end)) >= confBound;
-    if any(violations)
-        vIdx = find(violations);
-        bar(vIdx, autoCorr(vIdx + 1), 0.5, 'FaceColor', [0.9 0.2 0.2]);
-    end
+    hold off;
     xlabel('Lag');
     ylabel('r_{ee}(\tau)');
     title('Residual Autocorrelation (Whiteness Test)');
-    hold off;
 
     % Bottom panel: cross-correlation
     if ~isTimeSeries && ~isempty(crossCorr)
         subplot(nPanels, 1, 2);
         lags_cross = (-maxLag:maxLag)';
-        bar(lags_cross, crossCorr, 0.5, 'FaceColor', [0.3 0.5 0.8]);
+        h2 = bar(lags_cross, crossCorr, 0.5);
+        set(h2, 'FaceColor', [0.3 0.5 0.8]);
         hold on;
         plot([-maxLag maxLag], [confBound confBound], 'r--', 'LineWidth', 1);
         plot([-maxLag maxLag], [-confBound -confBound], 'r--', 'LineWidth', 1);
-        violations_c = abs(crossCorr) >= confBound;
-        if any(violations_c)
-            vIdx_c = find(violations_c);
-            bar(lags_cross(vIdx_c), crossCorr(vIdx_c), 0.5, 'FaceColor', [0.9 0.2 0.2]);
-        end
+        hold off;
         xlabel('Lag');
         ylabel('r_{eu}(\tau)');
         title('Residual-Input Cross-Correlation (Independence Test)');
-        hold off;
     end
 end
