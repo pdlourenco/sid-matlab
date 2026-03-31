@@ -1,13 +1,12 @@
 # sid — Algorithm Specification
 
-**Version:** 0.4.0-draft
+**Version:** 0.5.0-draft
 **Date:** 2026-03-30
 **Reference:** Ljung, L. *System Identification: Theory for the User*, 2nd ed., Prentice Hall, 1999.
 
 ---
 
-> **Implementation status:** §1–5 (frequency-domain estimation) and §7 (spectrograms) are implemented. §6 (`sidFreqMap`) is implemented for the BT algorithm; Welch algorithm support is planned. §8 base + §8.4 (`sidLTVdisc`, `sidLTVdiscTune`) are implemented. §8.8–8.12 (variable-length trajectories, Bayesian uncertainty, online/recursive COSMIC, frequency-response lambda tuning, output-only estimation) describe planned features not yet implemented. §9 (`sidFreqETFE`, `sidFreqBTFDR`) is implemented.
-> Implementation status: §1–5 (frequency-domain estimation), §6 (sidFreqMap BT + Welch), §7 (spectrograms), §8 base + §8.4 (sidLTVdisc, sidLTVdiscTune), §8.8 (variable-length trajectories), §8.9 (Bayesian uncertainty + sidLTVdiscFrozen), and §9 (sidFreqETFE, sidFreqBTFDR) are implemented. §8.10–8.12 (online/recursive COSMIC, frequency-response lambda tuning, output-only estimation) describe planned features not yet implemented. Multiple trajectory support from the spectral methods are also planned throughout the document.
+> **Implementation status:** §1–5 (frequency-domain estimation), §6 (`sidFreqMap` BT + Welch), §7 (spectrograms), §8 base + §8.4 (`sidLTVdisc`, `sidLTVdiscTune`), §8.8 (variable-length trajectories), §8.9 (Bayesian uncertainty + `sidLTVdiscFrozen`), §8.11 (lambda tuning via frequency response), §9 (`sidFreqETFE`, `sidFreqBTFDR`), and §9a (multi-trajectory spectral) are implemented. §8.10 (online/recursive COSMIC), §8.12 (output-only estimation), §13 (`sidDetrend`), §14 (`sidResidual`), and §15 (`sidCompare`) describe planned features not yet implemented.
 
 ---
 
@@ -1261,6 +1260,8 @@ The following are out of scope for v1.0:
 - **EM-style output estimation:** Alternating state reconstruction and COSMIC.
 - **Direct output equation formulation:** Joint estimation of dynamics and output matrices.
 - **GCV lambda selection.**
+- **Parametric identification:** ARX, ARMAX, state-space subspace methods (`sidTfARX`, `sidSsN4SID`, etc.).
+- **LPV identification:** Structured parameter-varying models via direct least-squares or post-hoc regression on COSMIC output. See `docs/lpv_extension_theory.md` for design notes.
 
 ---
 
@@ -1388,3 +1389,258 @@ Both plotting functions accept name-value options:
 10. Bendat, J.S. and Piersol, A.G. *Random Data: Analysis and Measurement Procedures*, 4th ed. Wiley, 2010. (Ch. 9: Statistical errors in spectral estimates; Ch. 11: Multiple-input/output relationships.)
 
 11. Antoni, J. and Schoukens, J. "A comprehensive study of the bias and variance of frequency-response-function measurements: optimal window selection and overlapping strategies." Automatica, 43(10):1723–1736, 2007.
+
+---
+
+## 13. `sidDetrend` — Data Preprocessing
+
+### 13.1 Purpose
+
+`sidDetrend` removes trends from time-domain data before spectral or parametric estimation. Unremoved trends bias spectral estimates at low frequencies and violate the stationarity assumption underlying all frequency-domain methods.
+
+### 13.2 Algorithm
+
+Given a signal `x` of length `N`, fit a polynomial of degree `d` and subtract it:
+
+```
+x_detrended(t) = x(t) - p_d(t)
+```
+
+where `p_d(t) = c_0 + c_1 t + ... + c_d t^d` is the least-squares polynomial fit.
+
+Special cases:
+- `d = 0`: remove mean (constant detrend)
+- `d = 1`: remove linear trend (default)
+
+For multi-channel data `(N × n_ch)`, each channel is detrended independently.
+
+### 13.3 Segment-Wise Detrending
+
+When `'SegmentLength'` is specified, the data is divided into non-overlapping segments and each segment is detrended independently. This is useful for long records where the trend is not well described by a single polynomial.
+
+### 13.4 Inputs
+
+| Parameter | Type | Default |
+|-----------|------|---------|
+| `x` | `(N × n_ch)` real matrix | required |
+| `'Order'` | non-negative integer | `1` (linear) |
+| `'SegmentLength'` | positive integer | `N` (whole record) |
+
+### 13.5 Output
+
+| Output | Type | Description |
+|--------|------|-------------|
+| `x_detrended` | `(N × n_ch)` real | Same size as input, trends removed |
+| `trend` | `(N × n_ch)` real | The removed trend (`x = x_detrended + trend`) |
+
+### 13.6 Usage
+
+```matlab
+% Remove mean only
+y_dm = sidDetrend(y, 'Order', 0);
+
+% Remove linear trend (default)
+[y_dt, trend] = sidDetrend(y);
+
+% Remove quadratic trend
+y_dq = sidDetrend(y, 'Order', 2);
+
+% Segment-wise linear detrend
+y_ds = sidDetrend(y, 'SegmentLength', 1000);
+
+% Typical workflow
+[y_dt] = sidDetrend(y);
+[u_dt] = sidDetrend(u);
+result = sidFreqBT(y_dt, u_dt);
+```
+
+---
+
+## 14. `sidResidual` — Model Residual Analysis
+
+### 14.1 Purpose
+
+`sidResidual` computes the residuals of an estimated model and performs statistical tests to assess model quality. The two key diagnostics are:
+
+1. **Whiteness test:** Are the residuals uncorrelated with themselves? If the model has captured all dynamics, the residuals should be white noise.
+2. **Independence test:** Are the residuals uncorrelated with past inputs? If the model has captured the input-output relationship, past inputs should not predict the residual.
+
+These tests apply to any model that can produce a predicted output: non-parametric frequency-domain models (`sidFreqBT`, `sidFreqMap`), COSMIC state-space models (`sidLTVdisc`), or future parametric models.
+
+### 14.2 Residual Computation
+
+**For a frequency-domain model** with estimated transfer function `Ĝ(ω)`:
+
+```
+Ŷ(ω) = Ĝ(ω) × U(ω)
+ŷ(t) = IFFT(Ŷ(ω))
+e(t) = y(t) - ŷ(t)
+```
+
+**For a state-space model** with `A(k)`, `B(k)`:
+
+```
+x̂(k+1) = A(k) x̂(k) + B(k) u(k)
+e(k) = x(k+1) - x̂(k+1)
+```
+
+The residual `e(t)` is the portion of the output not explained by the model.
+
+### 14.3 Whiteness Test
+
+Compute the normalised autocorrelation of the residuals:
+
+```
+r_ee(τ) = R̂_ee(τ) / R̂_ee(0)       for τ = 0, 1, ..., M_test
+```
+
+Under the null hypothesis (residuals are white), `r_ee(τ)` for `τ > 0` is approximately normally distributed with zero mean and variance `1/N`. The 99% confidence bound is `±2.58/sqrt(N)`.
+
+The test passes if all `|r_ee(τ)| < 2.58/sqrt(N)` for `τ = 1, ..., M_test`.
+
+Default: `M_test = min(25, floor(N/5))`.
+
+### 14.4 Independence Test
+
+Compute the normalised cross-correlation between residuals and input:
+
+```
+r_eu(τ) = R̂_eu(τ) / sqrt(R̂_ee(0) × R̂_uu(0))       for τ = -M_test, ..., M_test
+```
+
+Under the null hypothesis (residuals are independent of input), the same confidence bounds apply.
+
+The test passes if all `|r_eu(τ)| < 2.58/sqrt(N)`.
+
+### 14.5 Inputs
+
+| Parameter | Type | Default |
+|-----------|------|---------|
+| `model` | sid result struct | required |
+| `y` | `(N × n_y)` real matrix | required |
+| `u` | `(N × n_u)` real matrix, or `[]` | `[]` (time series) |
+| `'MaxLag'` | positive integer | `min(25, floor(N/5))` |
+
+The function accepts any sid result struct that contains a `Response` field (frequency-domain models) or `A` and `B` fields (state-space models).
+
+### 14.6 Output Struct
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Residual` | `(N × n_y)` | Residual time series `e(t)` |
+| `AutoCorr` | `(M_test+1 × 1)` | Normalised autocorrelation `r_ee(τ)` for `τ = 0..M_test` |
+| `CrossCorr` | `(2*M_test+1 × 1)` | Normalised cross-correlation `r_eu(τ)` for `τ = -M_test..M_test` |
+| `ConfidenceBound` | scalar | 99% bound: `2.58/sqrt(N)` |
+| `WhitenessPass` | logical | True if autocorrelation test passes |
+| `IndependencePass` | logical | True if cross-correlation test passes |
+| `DataLength` | scalar | `N` |
+
+### 14.7 Plotting
+
+`sidResidual` optionally produces a two-panel figure:
+
+- **Top panel:** `r_ee(τ)` with `±2.58/sqrt(N)` confidence bounds (horizontal dashed lines).
+- **Bottom panel:** `r_eu(τ)` with same confidence bounds.
+
+Bars exceeding the bounds are highlighted in red.
+
+### 14.8 Usage
+
+```matlab
+% Validate a non-parametric model
+result = sidFreqBT(y, u);
+resid = sidResidual(result, y, u);
+
+if resid.WhitenessPass && resid.IndependencePass
+    disp('Model passes validation');
+else
+    disp('Model is inadequate — try different parameters');
+end
+
+% Validate a COSMIC model
+ltv = sidLTVdisc(X, U, 'Lambda', 1e5);
+resid = sidResidual(ltv, X, U);
+
+% Plot residual diagnostics
+sidResidual(result, y, u, 'Plot', true);
+```
+
+---
+
+## 15. `sidCompare` — Model Output Comparison
+
+### 15.1 Purpose
+
+`sidCompare` simulates a model's predicted output given the input signal and compares it to the measured output. This is the primary visual validation tool: if the model is good, the predicted and measured outputs should track closely.
+
+### 15.2 Simulation
+
+**For a frequency-domain model:**
+
+```
+Ŷ(ω) = Ĝ(ω) × U(ω)
+ŷ(t) = IFFT(Ŷ(ω))
+```
+
+**For a state-space model** (LTI or LTV):
+
+```
+x̂(k+1) = A(k) x̂(k) + B(k) u(k)       k = 0, ..., N-1
+```
+
+starting from `x̂(0) = x(0)` (measured initial condition).
+
+### 15.3 Fit Metric
+
+The normalised root mean square error (NRMSE) fit percentage:
+
+```
+fit = 100 × (1 - ||y - ŷ|| / ||y - mean(y)||)
+```
+
+where norms are Euclidean over time. A fit of 100% means perfect prediction; 0% means the model is no better than predicting the mean; negative values mean the model is worse than the mean.
+
+For multi-channel outputs, fit is computed per channel.
+
+For COSMIC multi-trajectory data, fit is computed per trajectory and averaged.
+
+### 15.4 Inputs
+
+| Parameter | Type | Default |
+|-----------|------|---------|
+| `model` | sid result struct | required |
+| `y` | `(N × n_y)` real matrix | required |
+| `u` | `(N × n_u)` real matrix | required |
+| `'InitialState'` | `(p × 1)` vector | `x(1)` from data (state-space only) |
+
+### 15.5 Output Struct
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Predicted` | `(N × n_y)` | Model-predicted output `ŷ(t)` |
+| `Measured` | `(N × n_y)` | Input `y(t)` (copy for convenience) |
+| `Fit` | `(1 × n_y)` | NRMSE fit percentage per channel |
+| `Residual` | `(N × n_y)` | `y(t) - ŷ(t)` |
+| `Method` | char | Method of the source model |
+
+### 15.6 Plotting
+
+When called with `'Plot', true` or with no output arguments, `sidCompare` produces a figure with measured and predicted outputs overlaid, and the fit percentage displayed in the title or legend.
+
+For multi-channel data, one subplot per channel.
+
+### 15.7 Usage
+
+```matlab
+% Compare non-parametric model to data
+result = sidFreqBT(y, u);
+comp = sidCompare(result, y, u);
+fprintf('Fit: %.1f%%\n', comp.Fit);
+
+% Compare COSMIC model — use validation trajectory
+ltv = sidLTVdisc(X_train, U_train, 'Lambda', 1e5);
+comp = sidCompare(ltv, X_val, U_val);
+
+% Plot comparison
+sidCompare(result, y, u, 'Plot', true);
+```
