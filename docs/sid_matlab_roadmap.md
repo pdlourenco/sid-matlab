@@ -330,12 +330,12 @@ Key insight: COSMIC forward pass = Kalman filter on parameter evolution; backwar
 
 ### Phase 8e — Output-COSMIC (`sidLTVdiscIO`) (~5 days) ⬜
 
-**Theory:** `docs/sid_cosmic_output_theory.md`
+**Theory:** `docs/cosmic_output.md`
 
 Core: alternating minimisation of joint objective (observation fidelity + dynamics fidelity + COSMIC smoothness). When `H = I`, reduces to standard `sidLTVdisc`.
 
 - `sidLTVdiscIO.m`:
-  - Initialisation: alternating x–B solve for states `{x_l(k)}` and input matrices `{B(k)}` with `A = I` (exact minimisation of `J|_{A=I}`, jointly convex, reuses state-step and COSMIC infrastructure)
+  - Initialisation: single forward-backward pass for states `{x_l(k)}` and input matrices `{B(k)}` jointly with `A = I` (exact minimisation of `J|_{A=I}`, jointly convex, composite block tridiagonal)
   - COSMIC step: standard `sidLTVdisc` on estimated states (reuses existing implementation)
   - State step: RTS smoother per trajectory with current `A(k)`, `B(k)`, `H`, `R`
   - Alternating loop with convergence monitoring (`|ΔJ/J| < ε_J`)
