@@ -56,8 +56,9 @@ function result = sidResidual(model, y, u, varargin)
     if isfield(model, 'A') && isfield(model, 'B')
         % State-space model (sidLTVdisc)
         [e, N_eff] = computeResidualSS(model, y, u);
-    elseif isfield(model, 'Response') && ~isempty(model.Response)
+    elseif isfield(model, 'Response')
         % Frequency-domain model (sidFreqBT, sidFreqETFE, etc.)
+        % Response may be empty for time-series models — that's valid
         [e, N_eff] = computeResidualFreq(model, y, u);
     else
         error('sid:badModel', ...

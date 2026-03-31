@@ -56,7 +56,7 @@ function result = sidCompare(model, y, u, varargin)
     % ---- Dispatch on model type ----
     if isfield(model, 'A') && isfield(model, 'B')
         [y_pred, y_meas] = simulateSS(model, y, u, x0);
-    elseif isfield(model, 'Response') && ~isempty(model.Response)
+    elseif isfield(model, 'Response')
         [y_pred, y_meas] = simulateFreq(model, y, u);
     else
         error('sid:badModel', ...
