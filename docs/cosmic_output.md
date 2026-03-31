@@ -66,7 +66,7 @@ $$
 J_{\text{init}}(\mathbf{X}, \mathbf{B}) = J(\mathbf{X}, \mathbf{C})\big|_{A(k)=I} = \sum_{l=1}^{L} \sum_{k=0}^{N} \|y_l(k) - H\,x_l(k)\|^2_{R^{-1}} + \sum_{l=1}^{L} \sum_{k=0}^{N-1} \|x_l(k+1) - x_l(k) - B(k)\,u_l(k)\|^2 + \lambda \sum_{k=1}^{N-1} \|B(k) - B(k-1)\|_F^2
 $$
 
-This is jointly convex in $\{x_l(k)\}$ and $\{B(k)\}$. All terms are quadratic with no bilinear coupling between the two sets of unknowns: $B(k)\,u_l(k)$ is linear in $B(k)$ since $u_l(k)$ is known data, and $x_l(k)$ appears linearly. The $B(k)$ matrices are shared across trajectories (same LTV dynamics), while each trajectory has its own state sequence. The minimiser is unique. See Appendix B for the solution algorithm.
+This is jointly convex in $\{x_l(k)\}$ and $\{B(k)\}$. All terms are quadratic with no bilinear coupling between the two sets of unknowns: $B(k)\,u_l(k)$ is linear in $B(k)$ since $u_l(k)$ is known data, and $x_l(k)$ appears linearly. The $B(k)$ matrices are shared across trajectories (same LTV dynamics), while each trajectory has its own state sequence. The minimiser is unique and obtained in a single forward-backward pass over composite blocks (Appendix B).
 
 **Structure of the linear system.** The unknowns are the $n$-vectors $x_l(0), \ldots, x_l(N)$ for each trajectory $l$, and the $n \times q$ matrices $B(0), \ldots, B(N-1)$ shared across trajectories. The per-trajectory state unknowns are coupled temporally through the dynamics fidelity term and coupled to $B(k)$ through the input terms. The normal equations form a block tridiagonal system in time; see Appendix B for the explicit structure and solution algorithms.
 
@@ -195,7 +195,7 @@ This ambiguity is inherent to all output-based system identification methods and
 
 ## 8. Computational Complexity
 
-- **Initialisation:** Alternating $x$–$B$ solve (Appendix B), $O(n_{\text{init}}\,(L\,N\,n^3 + N\,q^3))$ where $n_{\text{init}}$ is typically 3–10 iterations.
+- **Initialisation:** Single forward-backward pass with composite blocks, $O(N\,(Ln + nq)^3)$. For large $L$, exploitable structure reduces to $O(N\,(n^3 L + (nq)^3))$.
 - **State step:** RTS smoother, $O(N\,n^3)$ per trajectory, $O(L\,N\,n^3)$ total.
 - **COSMIC step:** Standard COSMIC tridiagonal solve, $O(N\,(n+q)^3)$, independent of $L$ (trajectories are pooled into the data matrices).
 - **Per outer iteration:** $O(L\,N\,n^3 + N\,(n+q)^3)$.
@@ -326,13 +326,11 @@ Store $\Lambda_k^{-1}$ and $Y_k$ for $k = 0, \ldots, N$ during the forward pass 
 
 ### B.1 Problem Structure
 
-The initialisation minimises $J_{\text{init}} = J\big|_{A=I}$ jointly over $\{x_l(k)\}$ and $\{B(k)\}$. This is a single convex quadratic with a unique minimiser. However, the unknowns $x_l(k)$ and $B(k)$ are coupled: the dynamics term $\|x_l(k+1) - x_l(k) - B(k)\,u_l(k)\|^2$ involves both $x_l(k)$ and $B(k)$.
+The initialisation minimises $J_{\text{init}} = J\big|_{A=I}$ jointly over $\{x_l(k)\}$ and $\{B(k)\}$. This is a single convex quadratic with a unique minimiser. Since $B(k)\,u_l(k)$ is linear in $B(k)$ (because $u_l(k)$ is known data) and $x_l(k)$ appears linearly, there is no bilinear coupling between the two sets of unknowns. The joint normal equations form a block tridiagonal system in time that is solved in a single forward-backward pass.
 
-Two solution strategies are available.
+### B.2 Composite Unknowns
 
-### B.2 Strategy 1: Composite Block Tridiagonal Solve (Exact, Single Pass)
-
-Define the composite unknown at time $k$:
+Define the composite unknown at each time step:
 
 $$
 w(k) = \begin{bmatrix} x_1(k) \\ \vdots \\ x_L(k) \\ \text{vec}(B(k)) \end{bmatrix} \in \mathbb{R}^{Ln + nq}, \qquad k = 0, \ldots, N-1
@@ -342,62 +340,117 @@ $$
 w(N) = \begin{bmatrix} x_1(N) \\ \vdots \\ x_L(N) \end{bmatrix} \in \mathbb{R}^{Ln}
 $$
 
-The normal equations $\partial J_{\text{init}} / \partial w(k) = 0$ form a block tridiagonal system in $w(0), \ldots, w(N)$ with blocks of size $(Ln + nq)$ for $k < N$ and $Ln$ for $k = N$. The same forward-backward algorithm from Appendix A applies with these larger blocks.
+The normal equations $\partial J_{\text{init}} / \partial w(k) = 0$ form a block tridiagonal system in $w(0), \ldots, w(N)$.
 
-**Complexity:** $O(N\,(Ln + nq)^3)$. This is exact in a single pass but expensive when $L$ is large.
+### B.3 Block Definitions
 
-### B.3 Strategy 2: Alternating $x$–$B$ Solve (Iterative, Reuses Existing Infrastructure)
+For each trajectory $l$, define $e_l(k) = u_l(k)^\top \otimes I_n \in \mathbb{R}^{n \times nq}$, which maps $\text{vec}(B(k))$ to $B(k)\,u_l(k)$. Stack these: $E(k) = [e_1(k);\; \ldots;\; e_L(k)] \in \mathbb{R}^{Ln \times nq}$.
 
-Since $J_{\text{init}}$ is jointly convex in $\{x_l(k)\}$ and $\{B(k)\}$, an alternating minimisation over the two blocks converges to the unique global minimum.
-
-**$x$-step.** Fix $\{B(k)\}$, solve for $\{x_l(k)\}$. With $A(k) = I$ for all $k$, this is the state step (Appendix A) with $A(k) = I$, run independently per trajectory. The recursion simplifies:
+**Diagonal blocks** (interior $0 < k < N$):
 
 $$
-S_0 = H^\top R^{-1} H + I, \qquad S_k = H^\top R^{-1} H + 2I \;(0 < k < N), \qquad S_N = H^\top R^{-1} H + I
+S_k = \begin{bmatrix} I_L \otimes (H^\top R^{-1} H + 2I_n) & E(k) - E(k-1) \\ (E(k) - E(k-1))^\top & P(k) + 2\lambda\,I_{nq} \end{bmatrix}
+$$
+
+where $P(k) = \sum_{l=1}^{L} (u_l(k)\,u_l(k)^\top) \otimes I_n \in \mathbb{R}^{nq \times nq}$ is the pooled input Gram matrix.
+
+The $x$–$B$ coupling block $E(k) - E(k-1)$ arises because the equation for $x_l(k)$ involves $+B(k)\,u_l(k) - B(k-1)\,u_l(k-1)$: the current $B(k)$ from the dynamics residual at $k$, and the previous $B(k-1)$ from the dynamics residual at $k-1$.
+
+**Boundary diagonal blocks:**
+
+$$
+S_0 = \begin{bmatrix} I_L \otimes (H^\top R^{-1} H + I_n) & E(0) \\ E(0)^\top & P(0) + \lambda\,I_{nq} \end{bmatrix}
 $$
 
 $$
-\Lambda_k = S_k - \Lambda_{k-1}^{-1}, \qquad Y_k = \Lambda_k^{-1}(\Theta_k + Y_{k-1})
+S_N = I_L \otimes (H^\top R^{-1} H + I_n) \qquad \text{(no $B$ block at $k = N$)}
+$$
+
+**Off-diagonal blocks** (super-diagonal, coupling $w(k)$ to $w(k+1)$, for $0 \leq k \leq N-2$):
+
+$$
+U_k = \begin{bmatrix} -I_L \otimes I_n & 0 \\ -E(k)^\top & -\lambda\,I_{nq} \end{bmatrix}
+$$
+
+The top-left block $-I_L \otimes I_n$ is the $x(k) \to x(k+1)$ coupling through the dynamics (with $A = I$). The bottom-left block $-E(k)^\top$ is the $B(k) \to x(k+1)$ coupling. The bottom-right block $-\lambda\,I_{nq}$ is the smoothness coupling $B(k) \to B(k+1)$.
+
+For $k = N-1$: $U_{N-1} = \begin{bmatrix} -I_L \otimes I_n \\ -E(N-1)^\top \end{bmatrix}$ (no $B$ column at $k = N$).
+
+**Right-hand side:**
+
+$$
+\Theta_0 = \begin{bmatrix} [H^\top R^{-1} y_1(0);\; \ldots;\; H^\top R^{-1} y_L(0)] \\ 0_{nq} \end{bmatrix}
 $$
 
 $$
-x_l(k) = Y_k + \Lambda_k^{-1}\,x_l(k+1)
+\Theta_k = \begin{bmatrix} [H^\top R^{-1} y_1(k);\; \ldots;\; H^\top R^{-1} y_L(k)] \\ 0_{nq} \end{bmatrix}, \qquad 0 < k < N
 $$
 
-where $\Theta_k = H^\top R^{-1} y_l(k) + b_l(k-1) - b_l(k)$ with $b_l(k) = B(k)\,u_l(k)$.
-
-**$B$-step.** Fix $\{x_l(k)\}$, solve for $\{B(k)\}$. Define the residual target $\Delta x_l(k) = x_l(k+1) - x_l(k)$ and write the cost in terms of $B(k)$ alone:
-
 $$
-\min_{\{B(k)\}} \sum_{l=1}^{L} \sum_{k=0}^{N-1} \|\Delta x_l(k) - B(k)\,u_l(k)\|^2 + \lambda \sum_{k=1}^{N-1} \|B(k) - B(k-1)\|_F^2
+\Theta_N = [H^\top R^{-1} y_1(N);\; \ldots;\; H^\top R^{-1} y_L(N)]
 $$
 
-This is a standard COSMIC problem. The correspondence is:
+### B.4 Forward-Backward Algorithm
 
-| COSMIC | $B$-step |
-|---|---|
-| Data vector $d_l(k) = [x_l(k);\; u_l(k)]$ | Data vector $d_l(k) = u_l(k) \in \mathbb{R}^q$ |
-| Target $X'_l(k) = x_l(k+1)$ | Target $\Delta x_l(k) = x_l(k+1) - x_l(k) \in \mathbb{R}^n$ |
-| Unknown $C(k) = [A^\top(k);\; B^\top(k)]$ | Unknown $B^\top(k) \in \mathbb{R}^{q \times n}$ |
+The same forward-backward algorithm as Appendix A applies with the composite blocks:
 
-The $B$-step reuses the existing COSMIC forward-backward pass with data matrices $D(k) = [u_1(k), \ldots, u_L(k)]^\top \in \mathbb{R}^{L \times q}$ and targets $\Delta X(k) = [\Delta x_1(k), \ldots, \Delta x_L(k)]^\top \in \mathbb{R}^{L \times n}$. Solved in $O(N\,q^3)$.
+**Forward pass** ($k = 0$ to $N$):
 
-**Alternation loop:**
+$$
+\Lambda_0 = S_0, \qquad Y_0 = \Lambda_0^{-1}\,\Theta_0
+$$
 
-1. Initialise $B^{(0)}(k) = 0$ for all $k$.
-2. $x$-step: solve for $\{x_l(k)\}$ given $\{B^{(s)}(k)\}$ using the state step with $A = I$. Cost: $O(L\,N\,n^3)$.
-3. $B$-step: solve for $\{B^{(s+1)}(k)\}$ given $\{x_l(k)\}$ using COSMIC. Cost: $O(N\,q^3)$.
-4. If $\|B^{(s+1)} - B^{(s)}\|_F / \|B^{(s+1)}\|_F < \varepsilon$, terminate. Otherwise return to step 2.
+For $k = 1, \ldots, N$:
 
-**Convergence:** Since $J_{\text{init}}$ is strictly convex in each block, the alternation converges to the unique global minimiser. Convergence is typically fast (3–10 iterations) because the $x$–$B$ coupling is mediated only through the input terms $B(k)\,u_l(k)$, which is weak relative to the diagonal observation and smoothness terms.
+$$
+\Lambda_k = S_k - U_{k-1}^\top\,\Lambda_{k-1}^{-1}\,U_{k-1}
+$$
 
-**Complexity per iteration:** $O(L\,N\,n^3 + N\,q^3)$.
+$$
+Y_k = \Lambda_k^{-1}\bigl(\Theta_k + U_{k-1}^\top\,Y_{k-1}\bigr)
+$$
 
-### B.4 Recommended Strategy
+Note: $L_k = U_{k-1}^\top$ by symmetry of the Hessian. The sign convention matches: $U_{k-1}^\top\,\Lambda_{k-1}^{-1}\,U_{k-1}$ is the Schur complement elimination of $w(k-1)$ from the equation for $w(k)$, and $U_{k-1}^\top\,Y_{k-1}$ propagates the eliminated RHS forward.
 
-Use Strategy 2 (alternating $x$–$B$) for implementation. It reuses the state-step and COSMIC infrastructure without new code, handles variable numbers of trajectories naturally, and converges in a small number of iterations. Strategy 1 is noted for theoretical completeness.
+**Backward pass** ($k = N-1$ to $0$):
 
-### B.5 Transition to Main Loop
+$$
+w(N) = Y_N
+$$
 
-After the initialisation converges, the estimated $\{x_l(k)\}$ and $\{B(k)\}$ are stored as $\mathbf{X}^{(0)}$ and $\mathbf{B}^{(0)}$, with $A^{(0)}(k) = I$ for all $k$. The main alternating loop (Section 4.2) begins with the COSMIC step, which estimates $A(k)$ and refines $B(k)$ using the full $C(k) = [A^\top(k);\; B^\top(k)]$ parameterisation.
+For $k = N-1, \ldots, 0$:
+
+$$
+w(k) = Y_k + \Lambda_k^{-1}\,U_k\,w(k+1)
+$$
+
+Note: the sign in $+\Lambda_k^{-1}\,U_k\,w(k+1)$ accounts for $U_k$ already carrying the negative sign (e.g., $-I_L \otimes I_n$ in the top-left).
+
+Wait — let me be precise. In the backward substitution for a system $\Lambda_k\,w(k) + U_k\,w(k+1) = \tilde{\Theta}_k$, we get $w(k) = \Lambda_k^{-1}(\tilde{\Theta}_k - U_k\,w(k+1)) = Y_k - \Lambda_k^{-1}\,U_k\,w(k+1)$.
+
+Since $U_k$ contains negative entries (e.g., $-I$), the double negative gives a positive contribution, matching the COSMIC backward pass.
+
+**Backward pass** (corrected):
+
+$$
+w(N) = Y_N
+$$
+
+For $k = N-1, \ldots, 0$:
+
+$$
+w(k) = Y_k - \Lambda_k^{-1}\,U_k\,w(k+1)
+$$
+
+After the backward pass, extract $x_l(k)$ and $B(k)$ from each $w(k)$.
+
+### B.5 Complexity
+
+Each forward or backward step involves operations on blocks of size $(Ln + nq)$. The dominant cost is the matrix inversion $\Lambda_k^{-1}$ at each step: $O((Ln + nq)^3)$. Total: $O(N\,(Ln + nq)^3)$.
+
+For typical problem sizes ($L \leq 10$, $n \leq 10$, $q \leq 5$), the block dimension is at most $\sim 150$, and the cubic cost is negligible. For very large $L$, the block-diagonal-plus-low-rank structure of $S_k$ (the $x$-blocks are independent across trajectories, coupled only through $B$) can be exploited via the Woodbury identity to reduce cost to $O(N\,(n^3 L + (nq)^3))$.
+
+### B.6 Transition to Main Loop
+
+After the forward-backward pass, the estimated $\{x_l(k)\}$ and $\{B(k)\}$ are stored as $\mathbf{X}^{(0)}$ and $\mathbf{B}^{(0)}$, with $A^{(0)}(k) = I$ for all $k$. The main alternating loop (Section 4.2) begins with the COSMIC step, which estimates $A(k)$ and refines $B(k)$ using the full $C(k) = [A^\top(k);\; B^\top(k)]$ parameterisation.
 
