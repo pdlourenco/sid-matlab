@@ -1,5 +1,5 @@
 function result = sidResidual(model, y, u, varargin)
-%SIDRESIDUAL Compute model residuals and perform diagnostic tests.
+% SIDRESIDUAL Compute model residuals and perform diagnostic tests.
 %
 %   result = sidResidual(model, y, u)
 %   result = sidResidual(model, y, u, 'MaxLag', M)
@@ -142,13 +142,12 @@ function result = sidResidual(model, y, u, varargin)
     end
 end
 
-
 % ========================================================================
 %  LOCAL FUNCTIONS
 % ========================================================================
 
 function [e, N] = computeResidualSS(model, X, U)
-%COMPUTERESIDUALSS Residuals from state-space model (COSMIC).
+% COMPUTERESIDUALSS Residuals from state-space model (COSMIC).
 %   e(k) = x(k+1) - A(k)*x(k) - B(k)*u(k)
 
     Nm = model.DataLength;  % number of time steps
@@ -180,9 +179,8 @@ function [e, N] = computeResidualSS(model, X, U)
     N = Nm;
 end
 
-
 function [e, N] = computeResidualFreq(model, y, u)
-%COMPUTERESIDUALFREQ Residuals from frequency-domain model via IFFT.
+% COMPUTERESIDUALFREQ Residuals from frequency-domain model via IFFT.
 %   Filter input through G(w) in frequency domain, IFFT, subtract from y.
 
     if isvector(y)
@@ -260,9 +258,8 @@ function [e, N] = computeResidualFreq(model, y, u)
     e = y - y_pred;
 end
 
-
 function G_interp = interpG(freqs_model, G, freqs_target)
-%INTERPG Interpolate complex transfer function onto target frequency grid.
+% INTERPG Interpolate complex transfer function onto target frequency grid.
 %   Uses linear interpolation of real and imaginary parts.
 %   Always returns a column vector.
 
@@ -271,9 +268,8 @@ function G_interp = interpG(freqs_model, G, freqs_target)
     G_interp = G_interp(:);  % ensure column
 end
 
-
 function plotResidualDiagnostics(autoCorr, crossCorr, confBound, maxLag, isTimeSeries)
-%PLOTRESIDUALDIAGNOSTICS Two-panel diagnostic plot.
+% PLOTRESIDUALDIAGNOSTICS Two-panel diagnostic plot.
 
     if isTimeSeries
         nPanels = 1;

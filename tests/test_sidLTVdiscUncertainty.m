@@ -364,6 +364,7 @@ totalObs = N * L;
 % dof should be between 0 and totalObs
 assert(result.DegreesOfFreedom > 0, 'DoF should be positive');
 assert(result.DegreesOfFreedom < totalObs, 'DoF should be < total observations');
-fprintf('  Test 14 passed: degrees of freedom is reasonable (dof=%.1f).\n', result.DegreesOfFreedom);
+fprintf(['  Test 14 passed: degrees of freedom is reasonable' ...
+    ' (dof=%.1f).\n'], result.DegreesOfFreedom);
 
 fprintf('test_sidLTVdiscUncertainty: ALL TESTS PASSED\n');

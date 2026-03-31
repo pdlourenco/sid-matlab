@@ -1,5 +1,5 @@
 function varargout = sidMapPlot(result, varargin)
-%SIDMAPPLOT Time-frequency color map for sidFreqMap results.
+% SIDMAPPLOT Time-frequency color map for sidFreqMap results.
 %
 %   sidMapPlot(result)
 %   sidMapPlot(result, 'PlotType', 'coherence')

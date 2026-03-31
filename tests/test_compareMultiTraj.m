@@ -46,7 +46,8 @@ phaseErr = max(abs(angle(r_sid.Response) - angle(resp_spa)));
 assert(phaseErr < 0.02, ...
     'Test 1: SISO multi-traj phase error=%.4f rad should be <0.02', phaseErr);
 
-fprintf('  Test 1 passed: sidFreqBT matches spa(merge(...)) for L=%d (mag err=%.4f).\n', L, relErr_mag);
+fprintf(['  Test 1 passed: sidFreqBT matches spa(merge(...))' ...
+    ' for L=%d (mag err=%.4f).\n'], L, relErr_mag);
 
 %% Test 2: sidFreqBT time-series vs spa merged (L=5)
 rng(4002);
@@ -135,7 +136,8 @@ else
     relErr = median(abs(abs(r_sid.Response) - abs(resp_spafdr)) ./ max(abs(resp_spafdr), 1e-10));
     assert(relErr < 0.10, ...
         'Test 4: BTFDR multi-traj median relErr=%.4f should be <10%%', relErr);
-    fprintf('  Test 4 passed: sidFreqBTFDR matches spafdr(merge(...)) (median err=%.4f).\n', relErr);
+    fprintf(['  Test 4 passed: sidFreqBTFDR matches' ...
+        ' spafdr(merge(...)) (median err=%.4f).\n'], relErr);
 end
 
 %% Test 5: MIMO multi-trajectory (2 outputs, 1 input, L=4)
@@ -159,7 +161,9 @@ G_spa = spa(dMerged, M, w);
 resp_spa = permute(G_spa.ResponseData, [3, 1, 2]);
 
 for ch = 1:2
-    relErr = max(abs(abs(r_sid.Response(:, ch)) - abs(resp_spa(:, ch))) ./ max(abs(resp_spa(:, ch)), 1e-10));
+    relErr = max(abs(abs(r_sid.Response(:, ch)) - ...
+        abs(resp_spa(:, ch))) ./ ...
+        max(abs(resp_spa(:, ch)), 1e-10));
     assert(relErr < 0.02, ...
         'Test 5: MIMO ch%d multi-traj relErr=%.4f should be <2%%', ch, relErr);
 end

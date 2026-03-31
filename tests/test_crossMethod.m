@@ -25,7 +25,9 @@ relErr_G = max(abs(result_bt.Response - result_btfdr.Response)) / max(abs(result
 assert(relErr_G < 0.01, 'BT and BTFDR should agree when resolution=2pi/M (relErr=%.4f)', relErr_G);
 
 % Noise spectrum should be very close
-relErr_Phi = max(abs(result_bt.NoiseSpectrum - result_btfdr.NoiseSpectrum)) / max(abs(result_bt.NoiseSpectrum));
+relErr_Phi = max(abs(result_bt.NoiseSpectrum - ...
+    result_btfdr.NoiseSpectrum)) / ...
+    max(abs(result_bt.NoiseSpectrum));
 assert(relErr_Phi < 0.01, 'BT and BTFDR noise spectra should agree (relErr=%.4f)', relErr_Phi);
 
 %% Test 2: All methods identify gain of pure-gain system
@@ -83,11 +85,15 @@ Phi_true = 1 ./ abs(1 - 0.9 * exp(-1j * w)).^2;
 
 % BT should be smooth and close to true
 relErr_bt = median(abs(result_bt.NoiseSpectrum - Phi_true) ./ Phi_true);
-assert(relErr_bt < 0.15, 'BT time series spectrum should be close to true (relErr=%.2f)', relErr_bt);
+assert(relErr_bt < 0.15, ...
+    'BT time series spectrum should be close to true (relErr=%.2f)', ...
+    relErr_bt);
 
 % BTFDR should also be close
 relErr_btfdr = median(abs(result_btfdr.NoiseSpectrum - Phi_true) ./ Phi_true);
-assert(relErr_btfdr < 0.15, 'BTFDR time series spectrum should be close (relErr=%.2f)', relErr_btfdr);
+assert(relErr_btfdr < 0.15, ...
+    'BTFDR time series spectrum should be close (relErr=%.2f)', ...
+    relErr_btfdr);
 
 % ETFE (periodogram) has high variance but correct on average
 % Check that median is in right ballpark
@@ -121,7 +127,9 @@ result_etfe = sidFreqETFE(y, u, 'Frequencies', w);
 
 % They won't be identical but responses should be correlated
 corr_mag = corrcoef(abs(result_bt_large.Response), abs(result_etfe.Response));
-assert(corr_mag(1,2) > 0.7, 'BT with large M should correlate with ETFE (corr=%.2f)', corr_mag(1,2));
+assert(corr_mag(1,2) > 0.7, ...
+    'BT with large M should correlate with ETFE (corr=%.2f)', ...
+    corr_mag(1,2));
 
 %% Test 8: MIMO results have consistent dimensions across methods
 rng(5);

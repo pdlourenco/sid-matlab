@@ -22,7 +22,10 @@ for l = 1:3
     X_cell{l} = zeros(Nl+1, p);
     X_cell{l}(1, :) = randn(1, p);
     for k = 1:Nl
-        X_cell{l}(k+1, :) = (A_true * X_cell{l}(k, :)' + B_true * U_cell{l}(k, :)')' + sigma * randn(1, p);
+        X_cell{l}(k+1, :) = (A_true * ...
+            X_cell{l}(k, :)' + ...
+            B_true * U_cell{l}(k, :)')' + ...
+            sigma * randn(1, p);
     end
 end
 
@@ -53,7 +56,9 @@ U_cell = cell(L, 1);
 for l = 1:L
     X_3d(1, :, l) = randn(1, p);
     for k = 1:N
-        X_3d(k+1, :, l) = (A_true * X_3d(k, :, l)' + B_true * U_3d(k, :, l)')' + sigma * randn(1, p);
+        X_3d(k+1, :, l) = (A_true * X_3d(k, :, l)' + ...
+            B_true * U_3d(k, :, l)')' + ...
+            sigma * randn(1, p);
     end
     X_cell{l} = X_3d(:, :, l);
     U_cell{l} = U_3d(:, :, l);
@@ -68,7 +73,8 @@ errA_3d   = norm(A_mean_3d - A_true, 'fro') / norm(A_true, 'fro');
 errA_cell = norm(A_mean_cell - A_true, 'fro') / norm(A_true, 'fro');
 assert(errA_3d < 0.15, '3D path should recover A well: %.4f', errA_3d);
 assert(errA_cell < 0.15, 'Cell path should recover A well: %.4f', errA_cell);
-fprintf('  Test 2 passed: both paths recover LTI system (3d=%.4f, cell=%.4f).\n', errA_3d, errA_cell);
+fprintf('  Test 2 passed: both paths recover LTI system (3d=%.4f, cell=%.4f).\n', ...
+    errA_3d, errA_cell);
 
 %% Test 3: Mixed lengths - correct dimensions
 rng(2200);
@@ -105,7 +111,8 @@ U_cell{1} = randn(3, q);
 X_cell{1} = zeros(4, p);
 X_cell{1}(1, :) = randn(1, p);
 for k = 1:3
-    X_cell{1}(k+1, :) = (A_true * X_cell{1}(k, :)' + B_true * U_cell{1}(k, :)')' + sigma * randn(1, p);
+    X_cell{1}(k+1, :) = (A_true * X_cell{1}(k, :)' ...
+        + B_true * U_cell{1}(k, :)')' + sigma * randn(1, p);
 end
 
 % Long trajectories
@@ -114,7 +121,8 @@ for l = 2:5
     X_cell{l} = zeros(41, p);
     X_cell{l}(1, :) = randn(1, p);
     for k = 1:40
-        X_cell{l}(k+1, :) = (A_true * X_cell{l}(k, :)' + B_true * U_cell{l}(k, :)')' + sigma * randn(1, p);
+        X_cell{l}(k+1, :) = (A_true * X_cell{l}(k, :)' ...
+            + B_true * U_cell{l}(k, :)')' + sigma * randn(1, p);
     end
 end
 
@@ -214,7 +222,8 @@ for l = 1:3
     X_cell{l} = zeros(Nl+1, p);
     X_cell{l}(1, :) = randn(1, p);
     for k = 1:Nl
-        X_cell{l}(k+1, :) = (A_true * X_cell{l}(k, :)' + B_true * U_cell{l}(k, :)')' + sigma * randn(1, p);
+        X_cell{l}(k+1, :) = (A_true * X_cell{l}(k, :)' ...
+            + B_true * U_cell{l}(k, :)')' + sigma * randn(1, p);
     end
 end
 

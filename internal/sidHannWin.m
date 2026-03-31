@@ -1,5 +1,5 @@
 function W = sidHannWin(M)
-%SIDHANNWIN Hann (Hanning) lag window for spectral analysis.
+% SIDHANNWIN Hann (Hanning) lag window for spectral analysis.
 %
 %   W = sidHannWin(M)
 %
@@ -26,7 +26,7 @@ function W = sidHannWin(M)
 %   This code is released under the MIT License. See LICENSE file in the
 %   project root for full license information.
 %
-%   This function is part of the Open Source System Identification 
+%   This function is part of the Open Source System Identification
 %   Toolbox (SID).
 %   For full documentation and examples, visit
 %   https://github.com/pdlourenco/sid-matlab

@@ -1,5 +1,5 @@
 function [x_detrended, trend] = sidDetrend(x, varargin)
-%SIDDETREND Remove polynomial trend from time-domain data.
+% SIDDETREND Remove polynomial trend from time-domain data.
 %
 %   x_dt = sidDetrend(x)
 %   x_dt = sidDetrend(x, 'Order', d)

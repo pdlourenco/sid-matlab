@@ -1,5 +1,5 @@
 function varargout = sidSpectrogramPlot(result, varargin)
-%SIDSPECTROGRAMPLOT Spectrogram color map plot.
+% SIDSPECTROGRAMPLOT Spectrogram color map plot.
 %
 %   sidSpectrogramPlot(result)
 %   sidSpectrogramPlot(result, 'FrequencyScale', 'log')

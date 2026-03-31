@@ -1,5 +1,5 @@
 function result = sidLTVdisc(X, U, varargin)
-%SIDLTVDISC Identify discrete-time LTV state-space model.
+% SIDLTVDISC Identify discrete-time LTV state-space model.
 %
 %   result = sidLTVdisc(X, U)
 %   result = sidLTVdisc(X, U, 'Lambda', lambda)
@@ -191,7 +191,6 @@ function result = sidLTVdisc(X, U, varargin)
     end
 end
 
-
 % ========================================================================
 %  LOCAL FUNCTIONS
 % ========================================================================
@@ -199,7 +198,7 @@ end
 function [X, U, lambda, doPrecondition, algorithm, doUncertainty, ...
          noiseCov, covMode, N, p, q, L, isVarLen, horizons] = ...
         parseInputs(X, U, varargin)
-%PARSEINPUTS Validate and parse inputs for sidLTVdisc.
+% PARSEINPUTS Validate and parse inputs for sidLTVdisc.
 %   Supports both 3D array input (uniform horizon) and cell array input
 %   (variable-length trajectories).
 
@@ -381,14 +380,14 @@ function [X, U, lambda, doPrecondition, algorithm, doUncertainty, ...
     % Validate CovarianceMode
     if ~ismember(lower(covMode), {'full', 'diagonal', 'isotropic'})
         error('sid:badCovMode', ...
-            'CovarianceMode must be ''full'', ''diagonal'', or ''isotropic''. Got ''%s''.', covMode);
+            ['CovarianceMode must be ''full'', ''diagonal'', ' ...
+            'or ''isotropic''. Got ''%s''.'], covMode);
     end
     covMode = lower(covMode);
 end
 
-
 function [D, Xl] = buildDataMatrices(X, U, N, p, q, L)
-%BUILDDATAMATRICES Construct D(k) and X'(k) for all k.
+% BUILDDATAMATRICES Construct D(k) and X'(k) for all k.
 %
 %   D(k)  = [X(k)' U(k)'] / sqrt(N)    size (L x p+q)
 %   Xl(k) = X(k+1)' / sqrt(N)           size (L x p)
@@ -406,9 +405,8 @@ function [D, Xl] = buildDataMatrices(X, U, N, p, q, L)
     end
 end
 
-
 function [D, Xl] = buildDataMatricesVarLen(X, U, N, p, q, L, horizons)
-%BUILDDATAMATRICESVARLEN Construct D(k) and Xl(k) for variable-length trajectories.
+% BUILDDATAMATRICESVARLEN Construct D(k) and Xl(k) for variable-length trajectories.
 %
 %   At each time step k, only trajectories with horizon > k contribute.
 %   D{k}  has size (|L(k)| x p+q), Xl{k} has size (|L(k)| x p).
@@ -444,9 +442,8 @@ function [D, Xl] = buildDataMatricesVarLen(X, U, N, p, q, L, horizons)
     end
 end
 
-
 function [S, T] = buildBlockTerms(D, Xl, lambda, N, p, q)
-%BUILDBLOCKTERMS Compute the block diagonal S_kk and right-hand side T_k.
+% BUILDBLOCKTERMS Compute the block diagonal S_kk and right-hand side T_k.
 %   Handles both 3D array D (uniform) and cell array D (variable-length).
 
     d = p + q;
@@ -475,9 +472,8 @@ function [S, T] = buildBlockTerms(D, Xl, lambda, N, p, q)
     end
 end
 
-
 function [S, T, lambda] = precondition(S, T, lambda, N, p, q)
-%PRECONDITION Apply block-diagonal preconditioning.
+% PRECONDITION Apply block-diagonal preconditioning.
 %
 %   Rescales each block row so that the diagonal block becomes identity.
 %   This reduces the condition number of the matrices inverted in the
@@ -508,9 +504,8 @@ function [S, T, lambda] = precondition(S, T, lambda, N, p, q)
     % cosmicSolve. The preconditioned S_kk = I means Lbd_k is easier to invert.
 end
 
-
 function [C, Lbd] = cosmicSolve(S, T, lambda, N, p, q)
-%COSMICSOLVE COSMIC forward-backward pass.
+% COSMICSOLVE COSMIC forward-backward pass.
 %
 %   Solves the block tridiagonal system arising from the regularized
 %   least squares formulation.
@@ -544,9 +539,8 @@ function [C, Lbd] = cosmicSolve(S, T, lambda, N, p, q)
     end
 end
 
-
 function [cost, fidelity, reg] = evaluateCost(A, B, D, Xl, lambda, N, p, q)
-%EVALUATECOST Compute COSMIC cost function value.
+% EVALUATECOST Compute COSMIC cost function value.
 %
 %   cost      = fidelity + reg
 %   fidelity  = (1/2) Σ_k ||D(k) C(k) - X'(k)||²_F
@@ -580,9 +574,8 @@ function [cost, fidelity, reg] = evaluateCost(A, B, D, Xl, lambda, N, p, q)
     cost     = fidelity + reg;
 end
 
-
 function bestLambda = lcurveLambda(D, Xl, N, p, q, doPrecondition)
-%LCURVELAMBDA Select lambda via L-curve method.
+% LCURVELAMBDA Select lambda via L-curve method.
 %
 %   Runs COSMIC for a grid of lambda values, computes the data fidelity
 %   and regularization terms for each, and selects the lambda at the
@@ -633,9 +626,8 @@ function bestLambda = lcurveLambda(D, Xl, N, p, q, doPrecondition)
     bestLambda = grid(idx);
 end
 
-
 function P = uncertaintyBackwardPass(S_scaled, lambda, N, d)
-%UNCERTAINTYBACKWARDPASS Compute P(k) = [A_unscaled^{-1}]_{kk}.
+% UNCERTAINTYBACKWARDPASS Compute P(k) = [A_unscaled^{-1}]_{kk}.
 %
 %   The COSMIC algorithm normalizes data by 1/sqrt(N), so S_scaled contains
 %   D_s'D_s + regularization. The posterior covariance requires the UNSCALED
@@ -685,9 +677,8 @@ function P = uncertaintyBackwardPass(S_scaled, lambda, N, d)
     end
 end
 
-
 function [Sigma, dof] = estimateNoiseCov(C, D, Xl, P, covMode, N, p, q, isVarLen, horizons)
-%ESTIMATENOISECOV Estimate noise covariance from COSMIC residuals.
+% ESTIMATENOISECOV Estimate noise covariance from COSMIC residuals.
 %
 %   The data D and Xl are scaled by 1/sqrt(N) (COSMIC convention). The
 %   scaled residuals E_s(k) have noise covariance Sigma/N. This function
@@ -765,9 +756,8 @@ function [Sigma, dof] = estimateNoiseCov(C, D, Xl, P, covMode, N, p, q, isVarLen
     end
 end
 
-
 function [AStd, BStd] = extractStd(P, Sigma, N, p, q)
-%EXTRACTSTD Compute standard deviations of A(k) and B(k) entries.
+% EXTRACTSTD Compute standard deviations of A(k) and B(k) entries.
 %
 %   Var(A(k)_{ba}) = Sigma_{bb} * P(k)_{aa}       for a = 1,...,p
 %   Var(B(k)_{ba}) = Sigma_{bb} * P(k)_{p+a,p+a}  for a = 1,...,q

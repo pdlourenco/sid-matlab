@@ -1,5 +1,5 @@
 function [bestResult, bestLambda, thirdOut] = sidLTVdiscTune(varargin)
-%SIDLTVDISCTUNE Lambda tuning for sidLTVdisc (validation or frequency-based).
+% SIDLTVDISCTUNE Lambda tuning for sidLTVdisc (validation or frequency-based).
 %
 %   VALIDATION METHOD (requires held-out state data):
 %
@@ -84,13 +84,13 @@ function [bestResult, bestLambda, thirdOut] = sidLTVdiscTune(varargin)
     end
 end
 
-
 % ========================================================================
 %  VALIDATION-BASED TUNING
 % ========================================================================
 
-function [bestResult, bestLambda, allLosses] = validationTune(X_train, U_train, X_val, U_val, varargin)
-%VALIDATIONTUNE Grid search over lambda, evaluated by trajectory RMSE.
+function [bestResult, bestLambda, allLosses] = ...
+    validationTune(X_train, U_train, X_val, U_val, varargin)
+% VALIDATIONTUNE Grid search over lambda, evaluated by trajectory RMSE.
 
     % ---- Parse options ----
     lambdaGrid = logspace(-3, 15, 50);
@@ -138,13 +138,12 @@ function [bestResult, bestLambda, allLosses] = validationTune(X_train, U_train, 
     bestResult = sidLTVdisc(X_train, U_train, 'Lambda', bestLambda, extraArgs{:});
 end
 
-
 % ========================================================================
 %  FREQUENCY-RESPONSE CONSISTENCY TUNING
 % ========================================================================
 
 function [bestResult, bestLambda, info] = frequencyTune(X, U, varargin)
-%FREQUENCYTUNE Select lambda via frequency-response consistency scoring.
+% FREQUENCYTUNE Select lambda via frequency-response consistency scoring.
 %
 %   Compares COSMIC frozen TF against non-parametric sidFreqMap estimate.
 %   Selects the largest lambda where >=threshold fraction of (omega, t)
@@ -298,14 +297,13 @@ function [bestResult, bestLambda, info] = frequencyTune(X, U, varargin)
     info.chi2Threshold  = chi2thresh;
 end
 
-
 % ========================================================================
 %  LOCAL HELPER FUNCTIONS
 % ========================================================================
 
 function frac = computeConsistencySISO(G_data, GStd_data, G_frozen, GStd_frozen, ...
                                        cohMask, chi2thresh)
-%COMPUTECONSISTENCYSISO Mahalanobis-like consistency for one SISO channel.
+% COMPUTECONSISTENCYSISO Mahalanobis-like consistency for one SISO channel.
 %
 %   G_data, GStd_data: (nf x K) from sidFreqMap
 %   G_frozen, GStd_frozen: (nf x nk) from sidLTVdiscFrozen (one channel)
@@ -327,9 +325,8 @@ function frac = computeConsistencySISO(G_data, GStd_data, G_frozen, GStd_frozen,
     end
 end
 
-
 function rmse = trajectoryRMSE(A, B, X_val, U_val, N, p, L_val)
-%TRAJECTORYRMSE Average trajectory prediction RMSE over validation set.
+% TRAJECTORYRMSE Average trajectory prediction RMSE over validation set.
 
     totalRMSE = 0;
 

@@ -1,5 +1,5 @@
 function result = sidSpectrogram(x, varargin)
-%SIDSPECTROGRAM Short-time FFT spectrogram.
+% SIDSPECTROGRAM Short-time FFT spectrogram.
 %
 %   result = sidSpectrogram(x)
 %   result = sidSpectrogram(x, 'WindowLength', 256, 'Overlap', 128)
@@ -209,9 +209,8 @@ function result = sidSpectrogram(x, varargin)
     result.Method        = 'sidSpectrogram';
 end
 
-
 function w = buildWindow(winSpec, L)
-%BUILDWINDOW Create a window vector of length L from a specification.
+% BUILDWINDOW Create a window vector of length L from a specification.
     if isnumeric(winSpec)
         w = winSpec(:);
         if length(w) ~= L

@@ -1,5 +1,5 @@
 function X = sidDFT(x, freqs, useFFT)
-%SIDDFT Compute DFT of time-domain signal at specified frequencies.
+% SIDDFT Compute DFT of time-domain signal at specified frequencies.
 %
 %   X = sidDFT(x, freqs, useFFT)
 %
@@ -29,7 +29,7 @@ function X = sidDFT(x, freqs, useFFT)
 %   This code is released under the MIT License. See LICENSE file in the
 %   project root for full license information.
 %
-%   This function is part of the Open Source System Identification 
+%   This function is part of the Open Source System Identification
 %   Toolbox (SID).
 %   For full documentation and examples, visit
 %   https://github.com/pdlourenco/sid-matlab

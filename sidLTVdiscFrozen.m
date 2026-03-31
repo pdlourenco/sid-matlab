@@ -1,5 +1,5 @@
 function result = sidLTVdiscFrozen(ltvResult, varargin)
-%SIDLTVDISCFROZEN Frozen transfer function from LTV state-space model.
+% SIDLTVDISCFROZEN Frozen transfer function from LTV state-space model.
 %
 %   result = sidLTVdiscFrozen(ltvResult)
 %   result = sidLTVdiscFrozen(ltvResult, 'Frequencies', w)
