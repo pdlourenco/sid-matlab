@@ -1,12 +1,12 @@
 # sid — Algorithm Specification
 
-**Version:** 0.5.0-draft
-**Date:** 2026-03-30
+**Version:** 0.6.0-draft
+**Date:** 2026-03-31
 **Reference:** Ljung, L. *System Identification: Theory for the User*, 2nd ed., Prentice Hall, 1999.
 
 ---
 
-> **Implementation status:** §1–5 (frequency-domain estimation), §6 (`sidFreqMap` BT + Welch), §7 (spectrograms), §8 base + §8.4 (`sidLTVdisc`, `sidLTVdiscTune`), §8.8 (variable-length trajectories), §8.9 (Bayesian uncertainty + `sidLTVdiscFrozen`), §8.11 (lambda tuning via frequency response), §9 (`sidFreqETFE`, `sidFreqBTFDR`), and §9a (multi-trajectory spectral) are implemented. §8.10 (online/recursive COSMIC), §8.12 (output-only estimation), §13 (`sidDetrend`), §14 (`sidResidual`), and §15 (`sidCompare`) describe planned features not yet implemented.
+> **Implementation status:** §1–5 (frequency-domain estimation), §6 (`sidFreqMap` BT + Welch), §7 (spectrograms), §8 base + §8.4 (`sidLTVdisc`, `sidLTVdiscTune`), §8.8 (variable-length trajectories), §8.9 (Bayesian uncertainty + `sidLTVdiscFrozen`), §8.11 (lambda tuning via frequency response), §9 (`sidFreqETFE`, `sidFreqBTFDR`), and §9a (multi-trajectory spectral) are implemented. §8.10 (online/recursive COSMIC), §8.12 (output-COSMIC), §13 (`sidDetrend`), §14 (`sidResidual`), and §15 (`sidCompare`) describe planned features not yet implemented.
 
 ---
 
@@ -1242,14 +1242,183 @@ Select `λ* = max{λ : S(λ) > 0.90}` — the largest λ for which at least 90% 
 - Bayesian uncertainty (§8.9) for COSMIC posterior bands.
 - `sidLTVdiscFrozen` utility for computing `G_cosmic(ω, k)`.
 
-### 8.12 Output-Only Estimation (`sidLTVdiscIO`)
+### 8.12 Output-COSMIC: Partial State Observation (`sidLTVdiscIO`)
 
-Two-stage approach for when only outputs `y(k) = C_obs x(k) + D_obs u(k)` are measured:
+**Theory:** `docs/sid_cosmic_output_theory.md`
 
-1. Use an initial LTI subspace method (or user-supplied observer) to estimate state trajectories `x̂(k)` from `y(k)` and `u(k)`.
-2. Feed `x̂(k)` into `sidLTVdisc` as if they were true states.
+#### 8.12.1 Problem Statement
 
-The user is warned that state estimates carry observer error.
+Identify the time-varying system matrices when only partial state observations are available:
+
+```
+x(k+1) = A(k) x(k) + B(k) u(k)       k = 0, ..., N-1
+y(k)   = H x(k)
+```
+
+where `y(k) ∈ ℝᵖʸ` is the measurement, `x(k) ∈ ℝⁿ` is the (unknown) state, `H ∈ ℝᵖʸˣⁿ` is a known, time-invariant observation matrix, and `A(k)`, `B(k)` are unknown. The state dimension `n` is assumed known. When `H = I` (full state observation), this reduces to standard `sidLTVdisc`.
+
+#### 8.12.2 Joint Objective
+
+```
+J(X, C) = Σ_k ||y(k) - H x(k)||²_{R⁻¹}
+        + Σ_k ||x(k+1) - A(k) x(k) - B(k) u(k)||²
+        + λ Σ_k ||C(k) - C(k-1)||²_F
+```
+
+where `R ∈ ℝᵖʸˣᵖʸ` is the measurement noise covariance (symmetric positive definite; set `R = I` if unknown), `||v||²_{R⁻¹} = vᵀ R⁻¹ v` is the Mahalanobis norm, and `C(k) = [A(k)ᵀ; B(k)ᵀ]` as in §8.3.1.
+
+The three terms are: observation fidelity (weighted by the measurement information matrix `R⁻¹`), dynamics fidelity (coupling states and dynamics), and dynamics smoothness (the standard COSMIC regulariser with shared `λ`). Multi-trajectory: the observation and dynamics fidelity terms sum over trajectories; the smoothness term is shared.
+
+**Recovery of standard COSMIC:** When `H = I` and `R → 0`, the observation fidelity forces `x(k) = y(k)` and `J` reduces to the standard COSMIC cost (§8.3.3). No additional hyperparameters are introduced in the fully-observed case.
+
+#### 8.12.3 Alternating Minimisation Algorithm
+
+The joint objective is non-convex (bilinear coupling `A(k) x(k)`) but strictly convex in each block given the other. The algorithm alternates two steps after an initialisation.
+
+**Initialisation.** Evaluate `J` at `A(k) = I` for all `k` and jointly solve for `{x_l(k)}` and `{B(k)}`:
+
+```
+J_init(X, B) = J(X, C)|_{A=I}
+             = Σ_l Σ_k ||y_l(k) - H x_l(k)||²_{R⁻¹}
+             + Σ_l Σ_k ||x_l(k+1) - x_l(k) - B(k) u_l(k)||²
+             + λ Σ_k ||B(k) - B(k-1)||²_F
+```
+
+This is jointly convex in `{x_l(k)}` and `{B(k)}` (no bilinear terms — `B(k) u_l(k)` is linear in `B(k)` since `u_l(k)` is known data). The `B(k)` are shared across trajectories (same LTV dynamics); each trajectory has its own state sequence. The minimiser is unique and obtained in a single linear solve. The autonomous state evolution is modelled as a random walk (`A = I`) with input-driven corrections; the smoothness prior on `B(k)` prevents the input matrix from absorbing dynamics attributable to `A(k)`.
+
+Since `J_init = J|_{A=I}`, the initialisation is the exact minimisation of the global objective over a restricted subspace, not a separate heuristic.
+
+**COSMIC step.** Fix state estimates `X̂`, solve for `C = [A; B]` using standard COSMIC (§8.3.4) with the estimated states as data. The observation fidelity term is constant w.r.t. `C` and drops out. Multi-trajectory pooling into the data matrices proceeds exactly as in §8.3.2.
+
+**State step.** Fix `C`, solve for `{x_l(k)}` per trajectory:
+
+```
+min_x  Σ_k ||y(k) - H x(k)||²_{R⁻¹}  +  Σ_k ||x(k+1) - A(k) x(k) - B(k) u(k)||²
+```
+
+This is exactly a Rauch–Tung–Striebel (RTS) smoother with measurement noise covariance `R` and process noise covariance `Q = I`, conditioned on the full observation sequence `{y(k)}`. Computed in `O(N n³)` per trajectory via the standard forward-backward recursion. Each trajectory is independent given the shared `C`.
+
+Alternate COSMIC step and state step until `|J^{(t+1)} - J^{(t)}| / |J^{(t)}| < ε_J`.
+
+#### 8.12.4 Trust-Region Interpolation (Optional)
+
+When the transition from `A = I` (initialisation) to the first COSMIC estimate of `A(k)` is too abrupt — for instance with high noise, long trajectories, or poorly conditioned data — the state step can use interpolated dynamics:
+
+```
+Ã(k) = (1 - μ) A(k) + μ I
+```
+
+where `μ ∈ [0, 1]` is the trust-region parameter. The COSMIC step is unaffected (it always solves for `A(k)` and `B(k)` freely).
+
+**Adaptive schedule.** The outer loop manages `μ`:
+
+1. Initialise `μ = 1` (first state step uses `A = I`, i.e., the initialisation).
+2. Run the alternating state–COSMIC loop to convergence for the current `μ`, yielding `J*(μ)`.
+3. Reduce `μ`: set `μ ← μ / 2`.
+4. Run the alternating loop to convergence with the new `μ`, yielding `J*(μ/2)`.
+5. **Accept/reject:** If `J*(μ/2) ≤ J*(μ)`, accept and continue from step 3. If `J*(μ/2) > J*(μ)`, revert to `μ` and terminate.
+6. Terminate when `μ < ε_μ` and set `μ = 0` for a final pass.
+
+When disabled (`μ = 0` from iteration 2 onward), the trust-region adds no computational overhead. This is expected to be sufficient for most practical cases.
+
+#### 8.12.5 Convergence
+
+1. **Monotone decrease:** Each block minimisation reduces (or maintains) `J`. Since `J ≥ 0`, the sequence `{J^{(t)}}` converges.
+2. **Stationary point:** Both subproblems have unique minimisers (`R⁻¹ ≻ 0` for the state step, `λ > 0` for COSMIC). By Grippo and Sciandrone (2000, Theorem 2.1), every limit point of the iterates is a stationary point of `J`.
+3. **Non-convexity:** Multiple stationary points may exist due to the bilinear coupling and the similarity transformation ambiguity (§8.12.7). Global optimality is not guaranteed. The initialisation and optional trust-region serve to place the iterates in a favourable basin of attraction.
+4. **Trust-region:** The outer `μ`-loop produces a monotonically non-increasing sequence of converged objectives and terminates in finite steps.
+
+#### 8.12.6 Computational Complexity
+
+- **Initialisation:** Single linear solve, `O(N (n + nq)²)` per trajectory.
+- **State step:** RTS smoother, `O(N n³)` per trajectory, `O(L N n³)` total.
+- **COSMIC step:** Standard COSMIC tridiagonal solve, `O(N (n+q)³)`, independent of `L`.
+- **Per iteration:** `O(L N n³ + N (n+q)³)`.
+
+The linear scaling in `N` — the hallmark of COSMIC — is preserved.
+
+#### 8.12.7 Similarity Transformation Ambiguity
+
+For any invertible `T ∈ ℝⁿˣⁿ`, the transformation `(T x(k), T A(k) T⁻¹, T B(k))` produces identical input-output behaviour. The observation term constrains this ambiguity (requiring `H T⁻¹` to produce the same outputs) but does not eliminate it unless `H` has full column rank. If a canonical form is desired, impose it as post-processing (e.g., balanced realisation, observable canonical form).
+
+#### 8.12.8 Inputs
+
+| Parameter | Symbol | Type | Default |
+|-----------|--------|------|---------|
+| Output data | `Y` | `(N+1 × p_y)` or `(N+1 × p_y × L)` | required |
+| Input data | `U` | `(N × q)` or `(N × q × L)` | required |
+| Observation matrix | `H` | `(p_y × n)` real | required |
+| Regularisation | `λ` | scalar or `(N-1 × 1)` vector | required |
+| Noise covariance | `R` | `(p_y × p_y)` SPD matrix | `eye(p_y)` |
+| Convergence tol. | `ε_J` | positive scalar | `1e-6` |
+| Max iterations | | positive integer | `50` |
+| Trust region | `μ_0` | scalar in `[0, 1]` or `'off'` | `'off'` |
+| Trust region tol. | `ε_μ` | positive scalar | `1e-6` |
+
+Cell arrays accepted for variable-length trajectories, following the same conventions as `sidLTVdisc` (§8.8).
+
+#### 8.12.9 Output Struct
+
+Extends the standard `sidLTVdisc` output struct (§8.5) with:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `A` | `(n × n × N)` | Estimated dynamics matrices |
+| `B` | `(n × q × N)` | Estimated input matrices |
+| `X` | `(N+1 × n × L)` | Estimated state trajectories |
+| `H` | `(p_y × n)` | Observation matrix (copy) |
+| `R` | `(p_y × p_y)` | Noise covariance used |
+| `Cost` | `(n_iter × 1)` | Cost `J` at each iteration |
+| `Iterations` | scalar | Number of alternating iterations |
+| `Method` | char | `'sidLTVdiscIO'` |
+| `Lambda` | scalar or vector | Regularisation used |
+
+Plus all standard COSMIC output fields (`AStd`, `BStd`, etc. from §8.9, computed at final iteration).
+
+#### 8.12.10 Hyperparameters
+
+**`λ` (dynamics smoothness):** Same role and selection criteria as in standard COSMIC (§8.4, §8.11). Controls the trade-off between data fidelity and temporal smoothness of the estimated system matrices.
+
+**`R` (measurement noise covariance):** Weights the observation fidelity term via `R⁻¹`. When known from sensor specifications or calibration, use directly — no tuning required. When unknown, set `R = I` (unweighted least squares). The relative scaling between `R⁻¹` and the dynamics fidelity term (which implicitly assumes unit process noise covariance) determines the balance between trusting measurements and trusting the dynamics model.
+
+**`μ` (trust-region):** Start at `μ = 1` if enabled, halve adaptively. For well-conditioned problems, leave disabled (`'off'`).
+
+#### 8.12.11 Usage
+
+```matlab
+% Basic: known H, unknown R
+result = sidLTVdiscIO(Y, U, H, 'Lambda', 1e5);
+
+% With known measurement noise covariance
+result = sidLTVdiscIO(Y, U, H, 'Lambda', 1e5, 'R', R_meas);
+
+% With trust-region for difficult convergence
+result = sidLTVdiscIO(Y, U, H, 'Lambda', 1e5, 'TrustRegion', 1);
+
+% Multi-trajectory
+result = sidLTVdiscIO(Y_3d, U_3d, H, 'Lambda', 1e5);
+
+% Inspect convergence
+plot(result.Cost); xlabel('Iteration'); ylabel('J');
+
+% Extract estimated states
+X_hat = result.X;
+
+% Frozen transfer function from estimated model
+frozen = sidLTVdiscFrozen(result, 'SampleTime', Ts);
+sidBodePlot(frozen);
+```
+
+#### 8.12.12 Model Order Determination
+
+When the state dimension `n` is unknown, it can be determined prior to calling `sidLTVdiscIO` using standard methods:
+
+1. **Subspace identification (N4SID/MOESP):** Estimate the transfer function `G(jω)` from I/O data, build the block Hankel matrix from impulse response coefficients, and determine `n` from the singular value gap. Use `sidFreqMap` for windowed spectral estimation if the system is time-varying (the model order `n` is constant even if `A(k)` varies).
+2. **Information criteria (BIC/AIC):** Run `sidLTVdiscIO` for `n = 1, 2, 3, ...` and select `n` minimising BIC.
+
+For the common case where some states are directly measured (`H = [H_known, 0]`), the number of hidden states `n_h = n - p_known` is the only unknown. The frequency response reveals observable modes beyond those directly measured.
+
+These model order selection methods are not implemented in `sid` v1.0 but can be performed using external tools or manually.
 
 ### 8.13 Deferred Extensions
 
@@ -1257,8 +1426,9 @@ The following are out of scope for v1.0:
 
 - **Alternative algorithms:** TVERA, TVOKID, LTVModels (the `'Algorithm'` parameter is ready for this).
 - **Alternative regularization norms:** Non-squared L2, L1 (total variation).
-- **EM-style output estimation:** Alternating state reconstruction and COSMIC.
-- **Direct output equation formulation:** Joint estimation of dynamics and output matrices.
+- **Unknown observation matrix:** Joint estimation of `H` alongside dynamics and states (three-block alternating minimisation).
+- **Time-varying observation matrix:** `H(k)` with smoothness prior; requires separate treatment.
+- **Model order selection:** N4SID-style singular value analysis or BIC sweep for automatic `n` determination.
 - **GCV lambda selection.**
 - **Parametric identification:** ARX, ARMAX, state-space subspace methods (`sidTfARX`, `sidSsN4SID`, etc.).
 - **LPV identification:** Structured parameter-varying models via direct least-squares or post-hoc regression on COSMIC output. See `docs/lpv_extension_theory.md` for design notes.
