@@ -91,18 +91,24 @@ function X_hat = sidLTVStateEst(Y, U, A, B, H, varargin)
     Uc_blk = cell(K - 1, 1);
 
     % Diagonal blocks (spec k=0..N, MATLAB j=1..K)
-    % j=1 (spec k=0): S_0 = H'R^{-1}H + A(0)'Q^{-1}A(0) + P_0^{-1}
-    % A weak initial-state prior P_0^{-1} = sqrt(eps)*I prevents singularity
-    % when H has rank < n and A(0) does not span the unobserved subspace.
-    S_blk{1} = HtRinvH + A(:,:,1)' * Qinv * A(:,:,1) + sqrt(eps) * eye(n);
+    % When py < n, H'R^{-1}H is rank-deficient and Schur complements can
+    % become singular.  A weak state prior prevents this.
+    if py < n
+        state_prior = sqrt(eps) * eye(n);
+    else
+        state_prior = zeros(n);
+    end
+
+    % j=1 (spec k=0): S_0 = H'R^{-1}H + A(0)'Q^{-1}A(0)
+    S_blk{1} = HtRinvH + A(:,:,1)' * Qinv * A(:,:,1) + state_prior;
 
     % j=2..N (spec k=1..N-1): S_k = H'R^{-1}H + Q^{-1} + A(k)'Q^{-1}A(k)
     for j = 2:N
-        S_blk{j} = HtRinvH + Qinv + A(:,:,j)' * Qinv * A(:,:,j);
+        S_blk{j} = HtRinvH + Qinv + A(:,:,j)' * Qinv * A(:,:,j) + state_prior;
     end
 
     % j=K (spec k=N): S_N = H'R^{-1}H + Q^{-1}
-    S_blk{K} = HtRinvH + Qinv;
+    S_blk{K} = HtRinvH + Qinv + state_prior;
 
     % Off-diagonal blocks (spec k=0..N-1, MATLAB j=1..N)
     % U_k = -A(k)' Q^{-1}
