@@ -57,7 +57,8 @@ fprintf('True state dimension: n = %d, observed: py = %d.\n', n, py);
 
 %% Step 1: Estimate frequency response
 % Use the first trajectory for frequency response estimation.
-G = sidFreqBT(Y(:,:,1), U(:,:,1), 'WindowSize', 20);
+% Trim Y to match U length (sidFreqBT requires equal-length signals).
+G = sidFreqBT(Y(1:N,:,1), U(:,:,1), 'WindowSize', 20);
 
 %% Step 2: Model order determination
 % sidModelOrder estimates n from the Hankel singular values.
@@ -88,7 +89,7 @@ fprintf('B recovery error (relative Frobenius): %.4f\n', errB);
 figure;
 plot(1:N, squeeze(result.A(1,1,:)), 'b-', 'DisplayName', 'Recovered A_{11}(k)');
 hold on;
-yline(A_true(1,1), 'k--', 'LineWidth', 1.5, 'DisplayName', 'True A_{11}');
+plot(xlim, [A_true(1,1) A_true(1,1)], 'k--', 'LineWidth', 1.5, 'DisplayName', 'True A_{11}');
 xlabel('Time step k');
 ylabel('A_{11}(k)');
 title('Output-COSMIC: Recovered Dynamics (LTI Case)');
