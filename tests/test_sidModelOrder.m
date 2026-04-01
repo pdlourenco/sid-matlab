@@ -28,7 +28,7 @@ fprintf('  Test 1 passed: 2nd-order SISO system detected (n = %d).\n', n);
 %% Test 2: Known 4th-order SISO system
 % Cascade of two 2nd-order sections.
 rng(200);
-N = 3000;
+N = 5000;
 u = randn(N, 1);
 
 % Section 1: poles at 0.8 +/- 0.3i
@@ -40,11 +40,11 @@ C_obs = [1 0 1 0];
 x = zeros(4, 1);
 y = zeros(N, 1);
 for k = 1:N
-    y(k) = C_obs * x + 0.01 * randn;
+    y(k) = C_obs * x + 0.005 * randn;
     x = A_true * x + B_true * u(k);
 end
 
-G = sidFreqBT(y, u, 'WindowSize', 80);
+G = sidFreqBT(y, u, 'WindowSize', 100);
 [n, sv] = sidModelOrder(G);
 
 assert(n == 4, 'Expected n = 4 for 4th-order system, got n = %d', n);

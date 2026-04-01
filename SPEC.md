@@ -6,7 +6,7 @@
 
 ---
 
-> **Implementation status:** §1–5 (frequency-domain estimation), §6 (`sidFreqMap` BT + Welch), §7 (spectrograms), §8 base + §8.4 (`sidLTVdisc`, `sidLTVdiscTune`), §8.8 (variable-length trajectories), §8.9 (Bayesian uncertainty + `sidLTVdiscFrozen`), §8.11 (lambda tuning via frequency response), §9 (`sidFreqETFE`, `sidFreqBTFDR`), §9a (multi-trajectory spectral), §13 (`sidDetrend`), §14 (`sidResidual`), and §15 (`sidCompare`) are implemented. §8.10 (online/recursive COSMIC) and §8.12 (output-COSMIC) describe planned features not yet implemented.
+> **Implementation status:** §1–5 (frequency-domain estimation), §6 (`sidFreqMap` BT + Welch), §7 (spectrograms), §8 base + §8.4 (`sidLTVdisc`, `sidLTVdiscTune`), §8.8 (variable-length trajectories), §8.9 (Bayesian uncertainty + `sidLTVdiscFrozen`), §8.11 (lambda tuning via frequency response), §9 (`sidFreqETFE`, `sidFreqBTFDR`), §9a (multi-trajectory spectral), §13 (`sidDetrend`), §14 (`sidResidual`), and §15 (`sidCompare`) are implemented. §8.12 (output-COSMIC, `sidLTVdiscIO`, `sidLTVStateEst`, `sidModelOrder`) are implemented. §8.10 (online/recursive COSMIC) describes a planned feature not yet implemented.
 
 ---
 
@@ -1468,6 +1468,53 @@ result = sidLTVdiscIO(y, u, H, 'Lambda', 1e5);
 **For time-varying systems:** the model order `n` is constant even if `A(k)` varies. Use `sidFreqMap` for windowed spectral estimation; `sidModelOrder` can be applied to any single segment or to the overall (averaged) frequency response. Take the maximum `n` across segments if modes appear transiently.
 
 **For partially-known H:** when some states are directly measured (`H = [H_known, 0]`), the number of hidden states `n_h = n - p_known` is the only unknown. The frequency response reveals observable modes beyond those directly measured.
+
+#### 8.12.13 Batch LTV State Estimation (`sidLTVStateEst`)
+
+The state step of the Output-COSMIC algorithm (§8.12.3) is exposed as a standalone public function for batch LTV state estimation. Given known dynamics `A(k)`, `B(k)`, observation matrix `H`, and noise covariances `R`, `Q`, it estimates state trajectories by minimising:
+
+```
+J_state = Σ_k ||y(k) - H x(k)||²_{R⁻¹}  +  Σ_k ||x(k+1) - A(k) x(k) - B(k) u(k)||²_{Q⁻¹}
+```
+
+Solved via a block tridiagonal forward-backward pass (Rauch–Tung–Striebel smoother) in `O(N n³)` per trajectory.
+
+**Inputs:**
+
+| Parameter | Type | Default |
+|-----------|------|---------|
+| `Y` | `(N+1 × p_y)` or `(N+1 × p_y × L)` | required |
+| `U` | `(N × q)` or `(N × q × L)` | required |
+| `A` | `(n × n × N)` | required |
+| `B` | `(n × q × N)` | required |
+| `H` | `(p_y × n)` | required |
+| `'R'` | `(p_y × p_y)` SPD | `eye(p_y)` |
+| `'Q'` | `(n × n)` SPD | `eye(n)` |
+
+**Output:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `X_hat` | `(N+1 × n × L)` | Estimated state trajectories |
+
+**Usage:**
+
+```matlab
+% Basic state estimation
+X_hat = sidLTVStateEst(Y, U, A, B, H);
+
+% With known noise covariances
+X_hat = sidLTVStateEst(Y, U, A, B, H, 'R', R_meas, 'Q', Q_proc);
+```
+
+#### 8.12.14 Implementation Architecture
+
+The `sidLTVdiscIO` implementation is decomposed into reusable layers:
+
+- **`internal/sidLTVblkTriSolve`**: Generic block tridiagonal forward-backward solver. Uses cell arrays for non-uniform block sizes. Shared by both the initialisation and `sidLTVStateEst`.
+- **`internal/sidLTVdiscIOInit`**: Initialisation solve (`J|_{A=I}`). Builds composite blocks per Appendix B of `docs/cosmic_output.md` and calls `sidLTVblkTriSolve`.
+- **`sidLTVStateEst`**: User-facing batch state smoother. Builds per-trajectory blocks per Appendix A and calls `sidLTVblkTriSolve`.
+- **`sidLTVdiscIO`**: Orchestrator. Calls `sidLTVdiscIOInit`, then alternates between the COSMIC step (reusing `sidLTVbuildDataMatrices`, `sidLTVbuildBlockTerms`, `sidLTVcosmicSolve`) and `sidLTVStateEst` until convergence.
 
 ### 8.13 Deferred Extensions
 
