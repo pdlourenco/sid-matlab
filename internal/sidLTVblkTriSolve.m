@@ -68,12 +68,15 @@ function [w, Lbd] = sidLTVblkTriSolve(S, U, Theta)
 
     % ---- Forward pass ----
     Lbd{1} = S{1};
+    Lbd{1} = regIfSingular(Lbd{1});
     Y{1}   = Lbd{1} \ Theta{1};
 
     for k = 2:K
         LbdInvU = Lbd{k-1} \ U{k-1};
         Lbd{k}  = S{k} - U{k-1}' * LbdInvU;
-        Y{k}    = Lbd{k} \ (Theta{k} - U{k-1}' * Y{k-1});
+
+        Lbd{k} = regIfSingular(Lbd{k});
+        Y{k}   = Lbd{k} \ (Theta{k} - U{k-1}' * Y{k-1});
     end
 
     % ---- Backward pass ----
@@ -83,4 +86,20 @@ function [w, Lbd] = sidLTVblkTriSolve(S, U, Theta)
         w{k} = Y{k} - Lbd{k} \ (U{k} * w{k+1});
     end
 
+end
+
+function M = regIfSingular(M)
+% Add small ridge regularisation when a block is nearly singular.
+% This prevents NaN from backslash on rank-deficient Schur complements
+% that arise in partial-observation state estimation (H'*R^{-1}*H
+% is rank-deficient when py < n).
+    if rcond(M) < eps
+        diagNorm = max(abs(diag(M)));
+        if diagNorm > 0
+            reg = sqrt(eps) * diagNorm;
+        else
+            reg = sqrt(eps);
+        end
+        M = M + reg * eye(size(M, 1));
+    end
 end
