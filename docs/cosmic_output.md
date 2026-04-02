@@ -14,7 +14,7 @@ $$
 
 where $x(k) \in \mathbb{R}^n$ is the state, $u(k) \in \mathbb{R}^q$ is a known input, $y(k) \in \mathbb{R}^{p_y}$ is the measurement, and $H \in \mathbb{R}^{p_y \times n}$ is a known, time-invariant observation matrix. The system matrices $A(k) \in \mathbb{R}^{n \times n}$ and $B(k) \in \mathbb{R}^{n \times q}$ are unknown and to be estimated.
 
-Standard COSMIC assumes $H = I$ (full state observation). This document extends COSMIC to the case $p_y \leq n$, where the state is only partially observed.
+Standard COSMIC assumes $H = I$ (full state observation). This document extends COSMIC to partial observations ($p_y \leq n$) and over-determined observations ($p_y > n$). When $\operatorname{rank}(H) = n$ (including $p_y \geq n$), the state is exactly recoverable via weighted least squares and no iterative estimation is needed (see Section 4.1, Case 1).
 
 ## 2. Joint Objective
 
@@ -56,21 +56,31 @@ The dynamics smoothness term is shared across trajectories (single $\mathbf{C}$)
 
 The objective $J(\mathbf{x}, \mathbf{C})$ is non-convex jointly (due to the bilinear coupling $A(k)\,x(k)$), but is strictly convex in each block separately when the other is held fixed (given $\lambda > 0$ and $R$ positive definite). This motivates a two-block alternating minimisation scheme.
 
-### 4.1 Initialisation: State and Input Matrix Estimation with $A = I$
+### 4.1 Initialisation
 
-Before entering the alternating loop, an initialisation step estimates the state sequences and the input matrices $B(k)$ jointly, without requiring knowledge of $A(k)$. This is achieved by evaluating the joint objective $J$ at $A(k) = I$ for all $k$ and minimising over the remaining unknowns $\{\mathbf{x}, \mathbf{B}\}$.
+The initialisation strategy depends on the rank of $H$.
 
-Setting $A(k) = I$ in the multi-trajectory objective (Section 3), the smoothness term becomes $\lambda \sum_{k=1}^{N-1} \|C(k) - C(k-1)\|_F^2 = \lambda \sum_{k=1}^{N-1} \|B(k) - B(k-1)\|_F^2$ (since the $A = I$ block contributes zero). The initialisation cost is therefore:
+**Case 1: $\operatorname{rank}(H) = n$ (full-rank fast path).** When $H$ has full column rank (including $H = I$ and tall matrices with $p_y > n$), the state $x(k)$ is exactly recoverable from $y(k)$ via weighted least squares:
+
+$$
+\hat{x}(k) = (H^\top R^{-1} H)^{-1} H^\top R^{-1}\, y(k)
+$$
+
+This eliminates the state as a free variable. A single COSMIC step on the recovered states produces the final $A(k)$, $B(k)$ — no alternating loop is needed. The observation fidelity term achieves its minimum at the weighted LS solution for each time step independently. The total cost is $O(N\,p_y\,n + N\,(n+q)^3)$, with no iterations.
+
+**Case 2: $\operatorname{rank}(H) < n$ (partial observation).** When $H$ is rank-deficient, the state cannot be recovered from measurements alone. The algorithm uses an LTI frequency-domain initialisation followed by alternating minimisation:
+
+1. **LTI initialisation (`sidLTIfreqIO`).** Estimate constant dynamics $(A_0, B_0)$ from the I/O transfer function $G(e^{j\omega}) = H(e^{j\omega}I - A_0)^{-1}B_0$ via Blackman-Tukey spectral estimation and Ho-Kalman realization. The realization is transformed to the $H$-basis so that $C_r = H$ in the observation equation. Set $A(k) = A_0$, $B(k) = B_0$ for all $k$. This provides an observable initialisation for any $H$.
+
+2. Enter the alternating loop (Section 4.2).
+
+**Alternative initialisation (composite $A = I$ solve).** When $H$ has full column rank, one can also evaluate $J$ at $A(k) = I$ and jointly solve for $\{x_l(k)\}$ and $\{B(k)\}$:
 
 $$
 J_{\text{init}}(\mathbf{X}, \mathbf{B}) = J(\mathbf{X}, \mathbf{C})\big|_{A(k)=I} = \sum_{l=1}^{L} \sum_{k=0}^{N} \|y_l(k) - H\,x_l(k)\|^2_{R^{-1}} + \sum_{l=1}^{L} \sum_{k=0}^{N-1} \|x_l(k+1) - x_l(k) - B(k)\,u_l(k)\|^2 + \lambda \sum_{k=1}^{N-1} \|B(k) - B(k-1)\|_F^2
 $$
 
-This is jointly convex in $\{x_l(k)\}$ and $\{B(k)\}$. All terms are quadratic with no bilinear coupling between the two sets of unknowns: $B(k)\,u_l(k)$ is linear in $B(k)$ since $u_l(k)$ is known data, and $x_l(k)$ appears linearly. The $B(k)$ matrices are shared across trajectories (same LTV dynamics), while each trajectory has its own state sequence. The minimiser is unique and obtained in a single forward-backward pass over composite blocks (Appendix B).
-
-**Structure of the linear system.** The unknowns are the $n$-vectors $x_l(0), \ldots, x_l(N)$ for each trajectory $l$, and the $n \times q$ matrices $B(0), \ldots, B(N-1)$ shared across trajectories. The per-trajectory state unknowns are coupled temporally through the dynamics fidelity term and coupled to $B(k)$ through the input terms. The normal equations form a block tridiagonal system in time; see Appendix B for the explicit structure and solution algorithms.
-
-**Physical interpretation.** The initialisation models the autonomous state evolution as a random walk ($A = I$) with input-driven corrections. The smoothness prior on $B(k)$ prevents the input matrix from absorbing dynamics that should be attributed to $A(k)$. This provides a state estimate that is robust to ignorance of $A(k)$, at the cost of a weaker dynamical model. Crucially, since $J_{\text{init}} = J\big|_{A=I}$, the initialisation is not a separate heuristic — it is the exact minimisation of the global objective over a restricted subspace.
+This is jointly convex (no bilinear terms). The minimiser is unique and obtained in a single forward-backward pass over composite blocks (Appendix B). Since $J_{\text{init}} = J\big|_{A=I}$, this is the exact minimisation of the global objective over a restricted subspace. However, the full-rank fast path above is strictly simpler (no composite block system needed) and produces the same result when followed by a COSMIC step. The composite $A = I$ solve cannot be used when $\operatorname{rank}(H) < n$ because the observability matrix $\mathcal{O} = [H;\, HA;\, HA^2;\, \ldots]$ with $A = I$ has rank $p_y < n$ and the composite system is structurally singular.
 
 ### 4.2 Alternating Loop
 

@@ -25,7 +25,7 @@ sid is designed from the ground up to run on **GNU Octave** as a first-class tar
 - **Confidence-band plotting** — `sidBodePlot`, `sidSpectrumPlot`, `sidMapPlot`, and `sidSpectrogramPlot` render shaded confidence bands out of the box
 - **SISO, MIMO, and time-series modes** — unified API across all frequency-domain estimation functions
 - **Validated against MATLAB's System Identification Toolbox** — comparison tests for `spa`, `spafdr`, and `etfe` run in CI
-- **30 test suites** with continuous integration on both MATLAB and GNU Octave
+- **34 test suites** with continuous integration on both MATLAB and GNU Octave
 
 ## How It Works
 
@@ -48,6 +48,10 @@ The core frequency-domain estimators use the **Blackman-Tukey method**: compute 
 | `sidFreqMap` | `tfestimate`, `mscohere` | Time-varying frequency response map (BT or Welch) |
 | `sidSpectrogram` | `spectrogram` | Short-time FFT spectrogram |
 | `sidLTVdisc` | — | Discrete LTV state-space identification (COSMIC algorithm) |
+| `sidLTVdiscIO` | — | LTV identification from partial observations (Output-COSMIC) |
+| `sidLTIfreqIO` | — | LTI realization from I/O frequency response (Ho-Kalman) |
+| `sidLTVStateEst` | — | Batch LTV state estimation (RTS smoother) |
+| `sidModelOrder` | — | Model order estimation via Hankel SVD |
 | `sidLTVdiscTune` | — | Regularization tuning via validation loss or L-curve |
 | `sidLTVdiscFrozen` | — | Frozen transfer function G(w,k) with uncertainty propagation |
 

@@ -6,7 +6,7 @@
 
 ---
 
-> **Implementation status:** §1–5 (frequency-domain estimation), §6 (`sidFreqMap` BT + Welch), §7 (spectrograms), §8 base + §8.4 (`sidLTVdisc`, `sidLTVdiscTune`), §8.8 (variable-length trajectories), §8.9 (Bayesian uncertainty + `sidLTVdiscFrozen`), §8.11 (lambda tuning via frequency response), §9 (`sidFreqETFE`, `sidFreqBTFDR`), §9a (multi-trajectory spectral), §13 (`sidDetrend`), §14 (`sidResidual`), and §15 (`sidCompare`) are implemented. §8.12 (output-COSMIC, `sidLTVdiscIO`, `sidLTVStateEst`, `sidModelOrder`) are implemented. §8.10 (online/recursive COSMIC) describes a planned feature not yet implemented.
+> **Implementation status:** §1–5 (frequency-domain estimation), §6 (`sidFreqMap` BT + Welch), §7 (spectrograms), §8 base + §8.4 (`sidLTVdisc`, `sidLTVdiscTune`), §8.8 (variable-length trajectories), §8.9 (Bayesian uncertainty + `sidLTVdiscFrozen`), §8.11 (lambda tuning via frequency response), §9 (`sidFreqETFE`, `sidFreqBTFDR`), §9a (multi-trajectory spectral), §13 (`sidDetrend`), §14 (`sidResidual`), and §15 (`sidCompare`) are implemented. §8.12 (output-COSMIC, `sidLTVdiscIO`, `sidLTVStateEst`, `sidModelOrder`) and §8.13 (`sidLTIfreqIO`) are implemented. §8.10 (online/recursive COSMIC) describes a planned feature not yet implemented.
 
 ---
 
@@ -1271,44 +1271,35 @@ The three terms are: observation fidelity (weighted by the measurement informati
 
 **Recovery of standard COSMIC:** When `H = I` and `R → 0`, the observation fidelity forces `x(k) = y(k)` and `J` reduces to the standard COSMIC cost (§8.3.3). No additional hyperparameters are introduced in the fully-observed case.
 
-#### 8.12.3 Alternating Minimisation Algorithm
+#### 8.12.3 Algorithm
 
-The joint objective is non-convex (bilinear coupling `A(k) x(k)`) but strictly convex in each block given the other. The algorithm alternates two steps after an initialisation.
+The joint objective is non-convex (bilinear coupling `A(k) x(k)`) but strictly convex in each block given the other. The algorithm has two distinct paths depending on the rank of `H`.
 
-**Initialisation.** The initialisation strategy depends on whether `H` has full column rank.
-
-**Case 1: `H` has full column rank (`p_y ≥ n`, includes `H = I`).** Evaluate `J` at `A(k) = I` for all `k` and jointly solve for `{x_l(k)}` and `{B(k)}`:
+**Case 1: `H` has full column rank (`rank(H) = n`).** When `H` has full column rank (which includes `H = I` and tall matrices with `p_y > n`), the state `x(k)` is exactly recoverable from `y(k)` via weighted least squares:
 
 ```
-J_init(X, B) = J(X, C)|_{A=I}
-             = Σ_l Σ_k ||y_l(k) - H x_l(k)||²_{R⁻¹}
-             + Σ_l Σ_k ||x_l(k+1) - x_l(k) - B(k) u_l(k)||²
-             + λ Σ_k ||B(k) - B(k-1)||²_F
+x̂(k) = (Hᵀ R⁻¹ H)⁻¹ Hᵀ R⁻¹ y(k)
 ```
 
-This is jointly convex in `{x_l(k)}` and `{B(k)}` (no bilinear terms — `B(k) u_l(k)` is linear in `B(k)` since `u_l(k)` is known data). The `B(k)` are shared across trajectories (same LTV dynamics); each trajectory has its own state sequence. The minimiser is unique and obtained in a single forward-backward pass over composite blocks `w(k) = [x_1(k); ...; x_L(k); vec(B(k))]`; see Appendix B of the theory document for the explicit recursion. The autonomous state evolution is modelled as a random walk (`A = I`) with input-driven corrections; the smoothness prior on `B(k)` prevents the input matrix from absorbing dynamics attributable to `A(k)`.
+This eliminates the state as a free variable. A single COSMIC step (§8.3.4) on the recovered states produces the final `A(k)`, `B(k)` — no alternating loop is needed. The observation fidelity is minimised exactly at the weighted LS solution.
 
-Since `J_init = J|_{A=I}`, the initialisation is the exact minimisation of the global objective over a restricted subspace, not a separate heuristic.
+**Case 2: `rank(H) < n` (partial observation).** When `H` is rank-deficient, the state cannot be recovered from measurements alone. The algorithm uses alternating minimisation with an LTI frequency-domain initialisation:
 
-**Case 2: `H` is rank-deficient (`p_y < n`).** The composite `A = I` initialisation cannot be used because the observability matrix `O = [H; HA; HA²; ...]` with `A = I` has rank `p_y < n` — the unobserved state components are free parameters and the composite block tridiagonal system is structurally singular. Instead, a two-step pseudo-inverse initialisation is used:
+1. **LTI Initialisation via `sidLTIfreqIO` (§8.13).** Estimate constant dynamics `(A₀, B₀)` from the I/O transfer function via Blackman-Tukey spectral estimation and Ho-Kalman realization. The realization is transformed to the `H`-basis so that `C_r = H` in the observation equation. Replicate: `A(k) = A₀`, `B(k) = B₀` for all `k`. This provides an observable initialisation for any `H` without requiring `H` to have full column rank.
 
-1. **Pseudo-inverse state estimate:** Set `x̂_l(k) = H⁺ y_l(k) = Hᵀ(HHᵀ)⁻¹ y_l(k)` for all `k` and `l`. This pins observed components to the measurements and sets unobserved components to zero. Set `B(k) = 0` for all `k`.
+2. **Alternating loop.** Starting from the LTI initialisation, alternate:
 
-2. **First COSMIC step:** Run standard COSMIC on these pseudo-inverse states to obtain initial `A(k)` and `B(k)`. The resulting `A(k) ≠ I` couples observed and unobserved state components, making the system observable for the subsequent RTS smoother.
+   **State step.** Fix `C`, solve for `{x_l(k)}` per trajectory:
 
-This sacrifices the "exact minimisation of `J|_{A=I}`" property but provides a numerically stable starting point. After the first COSMIC step, the dynamics `A(k)` mix the state components, so the RTS smoother in the main loop can resolve the full state from partial observations.
+   ```
+   min_x  Σ_k ||y(k) - H x(k)||²_{R⁻¹}  +  Σ_k ||x(k+1) - A(k) x(k) - B(k) u(k)||²
+   ```
 
-**COSMIC step.** Fix state estimates `X̂`, solve for `C = [A; B]` using standard COSMIC (§8.3.4) with the estimated states as data. The observation fidelity term is constant w.r.t. `C` and drops out. Multi-trajectory pooling into the data matrices proceeds exactly as in §8.3.2.
+   This is exactly a Rauch–Tung–Striebel (RTS) smoother with measurement noise covariance `R` and process noise covariance `Q = I`, conditioned on the full observation sequence `{y(k)}`. Computed in `O(N n³)` per trajectory via the standard forward-backward recursion (`sidLTVStateEst`). Each trajectory is independent given the shared `C`.
 
-**State step.** Fix `C`, solve for `{x_l(k)}` per trajectory:
+   **COSMIC step.** Fix state estimates `X̂`, solve for `C = [A; B]` using standard COSMIC (§8.3.4) with the estimated states as data. The observation fidelity term is constant w.r.t. `C` and drops out. Multi-trajectory pooling into the data matrices proceeds exactly as in §8.3.2.
 
-```
-min_x  Σ_k ||y(k) - H x(k)||²_{R⁻¹}  +  Σ_k ||x(k+1) - A(k) x(k) - B(k) u(k)||²
-```
-
-This is exactly a Rauch–Tung–Striebel (RTS) smoother with measurement noise covariance `R` and process noise covariance `Q = I`, conditioned on the full observation sequence `{y(k)}`. Computed in `O(N n³)` per trajectory via the standard forward-backward recursion. Each trajectory is independent given the shared `C`.
-
-Alternate COSMIC step and state step until `|J^{(t+1)} - J^{(t)}| / |J^{(t)}| < ε_J`.
+   Alternate until `|J^{(t+1)} - J^{(t)}| / |J^{(t)}| < ε_J`.
 
 #### 8.12.4 Trust-Region Interpolation (Optional)
 
@@ -1340,12 +1331,13 @@ When disabled (`μ = 0` from iteration 2 onward), the trust-region adds no compu
 
 #### 8.12.6 Computational Complexity
 
-- **Initialisation:** When `p_y ≥ n`, single forward-backward pass with composite blocks, `O(N (Ln + nq)³)`. When `p_y < n`, pseudo-inverse state estimate `O(N p_y)` followed by one COSMIC step `O(N (n+q)³)`.
-- **State step:** RTS smoother, `O(N n³)` per trajectory, `O(L N n³)` total.
+- **Full-rank fast path (`rank(H) = n`):** Weighted LS state recovery `O(N p_y n)` + single COSMIC step `O(N (n+q)³)`. No iterations.
+- **LTI initialisation (`rank(H) < n`):** Ho-Kalman realization via `sidLTIfreqIO` (§8.13), `O(N_f p_y q + r³ p_y q)` where `r` is the Hankel horizon and `N_f` is the FFT length.
+- **State step:** RTS smoother (`sidLTVStateEst`), `O(N n³)` per trajectory, `O(L N n³)` total.
 - **COSMIC step:** Standard COSMIC tridiagonal solve, `O(N (n+q)³)`, independent of `L`.
-- **Per iteration:** `O(L N n³ + N (n+q)³)`.
+- **Per iteration (alternating loop):** `O(L N n³ + N (n+q)³)`.
 
-The linear scaling in `N` — the hallmark of COSMIC — is preserved.
+The linear scaling in `N` — the hallmark of COSMIC — is preserved in both paths.
 
 #### 8.12.7 Similarity Transformation Ambiguity
 
@@ -1521,12 +1513,60 @@ X_hat = sidLTVStateEst(Y, U, A, B, H, 'R', R_meas, 'Q', Q_proc);
 
 The `sidLTVdiscIO` implementation is decomposed into reusable layers:
 
-- **`internal/sidLTVblkTriSolve`**: Generic block tridiagonal forward-backward solver. Uses cell arrays for non-uniform block sizes. Shared by both the initialisation and `sidLTVStateEst`.
-- **`internal/sidLTVdiscIOInit`**: Initialisation solve (`J|_{A=I}`). Builds composite blocks per Appendix B of `docs/cosmic_output.md` and calls `sidLTVblkTriSolve`.
+- **`internal/sidLTVblkTriSolve`**: Generic block tridiagonal forward-backward solver. Uses cell arrays for non-uniform block sizes. Shared by `sidLTVStateEst` and `sidLTVdiscIOInit`.
+- **`sidLTIfreqIO`** (§8.13): LTI realization from I/O frequency response. Used by `sidLTVdiscIO` to initialise the alternating loop when `rank(H) < n`.
 - **`sidLTVStateEst`**: User-facing batch state smoother. Builds per-trajectory blocks per Appendix A and calls `sidLTVblkTriSolve`.
-- **`sidLTVdiscIO`**: Orchestrator. Calls `sidLTVdiscIOInit`, then alternates between the COSMIC step (reusing `sidLTVbuildDataMatrices`, `sidLTVbuildBlockTerms`, `sidLTVcosmicSolve`) and `sidLTVStateEst` until convergence.
+- **`sidLTVdiscIO`**: Orchestrator. When `rank(H) = n`, recovers states via weighted LS and runs a single COSMIC step. When `rank(H) < n`, calls `sidLTIfreqIO` for initialisation, then alternates between the COSMIC step (reusing `sidLTVbuildDataMatrices`, `sidLTVbuildBlockTerms`, `sidLTVcosmicSolve`) and `sidLTVStateEst` until convergence.
 
-### 8.13 Deferred Extensions
+### 8.13 LTI Realization from I/O Frequency Response (`sidLTIfreqIO`)
+
+Given partial I/O data `(Y, U)` and observation matrix `H`, estimate constant LTI dynamics `(A₀, B₀)` such that `x(k+1) = A₀ x(k) + B₀ u(k)`, `y(k) = H x(k)`.
+
+#### 8.13.1 Algorithm
+
+1. **Spectral estimation.** Compute the frequency response `G(e^{jω}) = H (e^{jω}I - A₀)⁻¹ B₀` via `sidFreqBT` (§2) applied to the I/O data. Average across trajectories if `L > 1`.
+
+2. **Impulse response.** Convert the frequency response to Markov parameters `g(k) = H A₀^{k-1} B₀` via conjugate-symmetric IFFT.
+
+3. **Hankel matrix.** Build block Hankel matrices `H₀` and `H₁` (shifted) from `{g(k)}`. Size: `(r p_y) × (r q)` where `r` is the Hankel horizon (default: `min(⌊N_imp / 3⌋, 50)`).
+
+4. **Ho-Kalman realization.** SVD of `H₀ = U Σ Vᵀ`. Truncate to order `n`:
+
+   ```
+   A_r = Σ_n^{-1/2} U_n^T H₁ V_n Σ_n^{-1/2}     (n × n)
+   C_r = U_n(1:p_y, :) Σ_n^{1/2}                   (p_y × n)
+   B_r = Σ_n^{1/2} V_n(1:q, :)^T                   (n × q)
+   ```
+
+5. **H-basis transform.** Find `T` such that `C_r T⁻¹ = H`:
+
+   ```
+   T⁻¹ = pinv(C_r) H + (I - pinv(C_r) C_r)
+   A₀ = T A_r T⁻¹,   B₀ = T B_r
+   ```
+
+   The `pinv` handles any `p_y ≤ n` or `p_y > n`. If `T⁻¹` is ill-conditioned (`rcond < 10³ eps`), a warning is issued and the raw realization `(A_r, B_r)` is returned.
+
+6. **Stabilization.** Eigenvalues of `A₀` with `|λ| > 1` are reflected inside the unit circle: `λ ← 1/λ̄`.
+
+#### 8.13.2 Inputs
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `Y` | `(N+1) × p_y` or `(N+1) × p_y × L` | Output data |
+| `U` | `N × q` or `N × q × L` | Input data |
+| `H` | `p_y × n` | Observation matrix |
+| `'Horizon'` | scalar | Hankel horizon `r`. Default: `min(⌊N_imp / 3⌋, 50)` |
+| `'MaxStabilize'` | scalar | Maximum eigenvalue magnitude after stabilization. Default: `0.999` |
+
+#### 8.13.3 Outputs
+
+| Output | Type | Description |
+|--------|------|-------------|
+| `A0` | `n × n` | Estimated constant dynamics matrix |
+| `B0` | `n × q` | Estimated constant input matrix |
+
+### 8.14 Deferred Extensions
 
 The following are out of scope for v1.0:
 
