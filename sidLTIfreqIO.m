@@ -33,6 +33,13 @@ function [A0, B0] = sidLTIfreqIO(Y, U, H, varargin)
 %     A0 - (n x n) estimated LTI dynamics matrix.
 %     B0 - (n x q) estimated LTI input matrix.
 %
+%   EXAMPLES:
+%     % Estimate LTI dynamics from partial observations
+%     [A0, B0] = sidLTIfreqIO(Y, U, H);
+%
+%     % With custom Hankel horizon
+%     [A0, B0] = sidLTIfreqIO(Y, U, H, 'Horizon', 30);
+%
 %   ALGORITHM:
 %     1. Estimate transfer function G(e^{jw}) = H(zI-A)^{-1}B via sidFreqBT
 %     2. Compute Markov parameters g(k) = H A^{k-1} B via IFFT
@@ -40,13 +47,6 @@ function [A0, B0] = sidLTIfreqIO(Y, U, H, varargin)
 %     4. SVD of H_0, truncate to order n (Ho-Kalman realization)
 %     5. Transform realization to H-basis: find T s.t. C_r T^{-1} = H
 %     6. Stabilize eigenvalues if needed
-%
-%   EXAMPLES:
-%     % Estimate LTI dynamics from partial observations
-%     [A0, B0] = sidLTIfreqIO(Y, U, H);
-%
-%     % With custom Hankel horizon
-%     [A0, B0] = sidLTIfreqIO(Y, U, H, 'Horizon', 30);
 %
 %   REFERENCES:
 %     Ho, B.L. and Kalman, R.E. "Effective construction of linear

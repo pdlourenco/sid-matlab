@@ -32,14 +32,6 @@ function [n, sv] = sidModelOrder(result, varargin)
 %            .SingularValues  (m x 1) singular values of the Hankel matrix
 %            .Horizon         scalar, prediction horizon used
 %
-%   ALGORITHM:
-%     1. Compute impulse response g(k) via IFFT of the frequency response.
-%     2. Build block Hankel matrix H with r block-rows and r block-cols.
-%        For MIMO systems, each entry g(k) is an n_y x n_u block.
-%     3. Compute SVD of H: [U, S, V] = svd(H).
-%     4. Detect model order as argmax_k (sigma_k / sigma_{k+1}).
-%        With threshold tau: n = number of sigma_k / sigma_1 > tau.
-%
 %   EXAMPLES:
 %     % Automated model order detection
 %     G = sidFreqBT(y, u);
@@ -52,6 +44,14 @@ function [n, sv] = sidModelOrder(result, varargin)
 %     p_y = size(y, 2);
 %     H = [eye(p_y), zeros(p_y, n - p_y)];
 %     res = sidLTVdiscIO(y, u, H, 'Lambda', 1e5);
+%
+%   ALGORITHM:
+%     1. Compute impulse response g(k) via IFFT of the frequency response.
+%     2. Build block Hankel matrix H with r block-rows and r block-cols.
+%        For MIMO systems, each entry g(k) is an n_y x n_u block.
+%     3. Compute SVD of H: [U, S, V] = svd(H).
+%     4. Detect model order as argmax_k (sigma_k / sigma_{k+1}).
+%        With threshold tau: n = number of sigma_k / sigma_1 > tau.
 %
 %   REFERENCES:
 %     Kung, S.Y. "A new identification and model reduction algorithm via

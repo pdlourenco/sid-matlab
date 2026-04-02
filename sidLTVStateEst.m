@@ -25,14 +25,8 @@ function X_hat = sidLTVStateEst(Y, U, A, B, H, varargin)
 %     'R' - Measurement noise covariance, (py x py) SPD. Default: eye(py).
 %     'Q' - Process noise covariance, (n x n) SPD. Default: eye(n).
 %
-%   OUTPUT:
+%   OUTPUTS:
 %     X_hat - Estimated states, (N+1 x n x L).
-%
-%   ALGORITHM:
-%     Block tridiagonal Gaussian elimination per docs/cosmic_output.md
-%     Appendix A. Per trajectory, builds n x n diagonal blocks S{k},
-%     off-diagonal U{k} = -A(k)' Q^{-1}, and RHS Theta{k}, then
-%     calls sidLTVblkTriSolve.
 %
 %   EXAMPLES:
 %     % State estimation with known dynamics
@@ -40,6 +34,12 @@ function X_hat = sidLTVStateEst(Y, U, A, B, H, varargin)
 %
 %     % With known measurement and process noise
 %     X_hat = sidLTVStateEst(Y, U, A, B, H, 'R', R_meas, 'Q', Q_proc);
+%
+%   ALGORITHM:
+%     Block tridiagonal Gaussian elimination per docs/cosmic_output.md
+%     Appendix A. Per trajectory, builds n x n diagonal blocks S{k},
+%     off-diagonal U{k} = -A(k)' Q^{-1}, and RHS Theta{k}, then
+%     calls sidLTVblkTriSolve.
 %
 %   SPECIFICATION:
 %     SPEC.md section 8.12 -- Output-COSMIC state step
