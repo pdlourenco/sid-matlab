@@ -18,9 +18,15 @@ sid is designed from the ground up to run on **GNU Octave** as a first-class tar
 - **Blackman-Tukey spectral analysis** (`sidFreqBT`) — the workhorse estimator, with configurable window size and automatic defaults
 - **Frequency-dependent resolution** (`sidFreqBTFDR`) — vary the smoothing bandwidth across the frequency axis
 - **Empirical transfer function estimate** (`sidFreqETFE`) — maximum resolution via FFT ratio, with optional smoothing
+- **Multi-trajectory averaging** — pool frequency estimates across repeated experiments for lower variance
 - **Time-varying analysis** — `sidFreqMap` for sliding-window frequency response maps (Blackman-Tukey or Welch), `sidSpectrogram` for short-time FFT spectrograms
 - **LTV state-space identification** (`sidLTVdisc`) — the COSMIC algorithm for identifying time-varying A(k), B(k) matrices from state measurements, with automatic or manual regularization tuning and optional Bayesian uncertainty quantification
+- **Output-COSMIC** (`sidLTVdiscIO`) — LTV identification from partial (output-only) observations, with variable-length trajectory support
+- **LTI realization** (`sidLTIfreqIO`) — Ho-Kalman realization from input-output frequency response data
+- **State estimation** (`sidLTVStateEst`) — batch LTV state estimation via RTS smoother
+- **Model order estimation** (`sidModelOrder`) — Hankel singular value analysis for selecting state dimension
 - **Frozen transfer function** (`sidLTVdiscFrozen`) — compute instantaneous G(w,k) = (e^{jw}I - A(k))^{-1} B(k) with propagated uncertainty bands
+- **Analysis and validation** — `sidDetrend` for signal preprocessing, `sidResidual` for residual diagnostics, `sidCompare` for model-vs-data comparison
 - **Asymptotic uncertainty** — standard deviations and squared coherence returned for every frequency-domain estimate (Ljung, 1999)
 - **Confidence-band plotting** — `sidBodePlot`, `sidSpectrumPlot`, `sidMapPlot`, and `sidSpectrogramPlot` render shaded confidence bands out of the box
 - **SISO, MIMO, and time-series modes** — unified API across all frequency-domain estimation functions
@@ -29,7 +35,7 @@ sid is designed from the ground up to run on **GNU Octave** as a first-class tar
 
 ## How It Works
 
-The core frequency-domain estimators use the **Blackman-Tukey method**: compute biased cross-covariances between input and output, apply a Hann lag window for spectral smoothing, then transform to the frequency domain via FFT (or direct DFT for custom frequency grids). The transfer function estimate is the ratio of cross-spectrum to input auto-spectrum, and the noise spectrum is obtained by subtraction. Asymptotic variance formulas from Ljung (1999) provide uncertainty estimates at each frequency, which are rendered as shaded confidence bands in the plotting functions. See [SPEC.md](SPEC.md) for the full mathematical derivation.
+The core frequency-domain estimators use the **Blackman-Tukey method**: compute biased cross-covariances between input and output, apply a Hann lag window for spectral smoothing, then transform to the frequency domain via FFT (or direct DFT for custom frequency grids). The transfer function estimate is the ratio of cross-spectrum to input auto-spectrum, and the noise spectrum is obtained by subtraction. Asymptotic variance formulas from Ljung (1999) provide uncertainty estimates at each frequency, which are rendered as shaded confidence bands in the plotting functions. For time-varying state-space identification, the toolbox implements the **COSMIC algorithm** (Carvalho et al., 2022): regularized least-squares estimation of A(k), B(k) matrices with optional Bayesian uncertainty, supporting both full-state and output-only observations. See [SPEC.md](SPEC.md) for the full mathematical derivation.
 
 ## Function Comparison
 
@@ -63,6 +69,14 @@ The core frequency-domain estimators use the **Blackman-Tukey method**: compute 
 | `sidSpectrumPlot` | — | Power spectrum plot with shaded confidence bands |
 | `sidMapPlot` | — | Time-frequency color map for `sidFreqMap` results |
 | `sidSpectrogramPlot` | — | Spectrogram color map |
+
+**Analysis and validation:**
+
+| sid function | Replaces | Description |
+|---|---|---|
+| `sidDetrend` | `detrend` | Remove mean, linear, or polynomial trends from signals |
+| `sidResidual` | `resid` | Residual analysis with auto/cross-correlation diagnostics |
+| `sidCompare` | `compare` | Simulate model output and compute fit percentage |
 
 All estimation functions support both positional and name-value calling conventions.
 
@@ -118,15 +132,25 @@ No toolboxes are required. The entire codebase uses only core MATLAB/Octave func
 
 ## Documentation
 
-- [**SPEC.md**](SPEC.md) — Full algorithm specification with mathematical derivations (references: Ljung 1999, Blackman & Tukey 1959, COSMIC — Carvalho et al. 2022)
+- [**SPEC.md**](SPEC.md) — Full algorithm specification with mathematical derivations
 - [**Roadmap**](docs/sid_matlab_roadmap.md) — Development phases and planned features
 - [**COSMIC uncertainty derivation**](docs/cosmic_uncertainty_derivation.md) — Bayesian posterior covariance for LTV identification
 - [**COSMIC online recursion**](docs/cosmic_online_recursion.md) — Recursive/streaming formulation of the COSMIC algorithm
+- [**COSMIC automatic tuning**](docs/cosmic_automatic_tuning.md) — Regularization parameter selection via validation and L-curve
+- [**Output-COSMIC**](docs/cosmic_output.md) — LTV identification from partial (output-only) observations
+- [**Multi-trajectory spectral theory**](docs/multi_trajectory_spectral_theory.md) — Averaging frequency estimates across repeated experiments
 - [**Examples**](examples/README.md) — Runnable scripts demonstrating typical workflows
+
+## References
+
+- Ljung, L. (1999). *System Identification: Theory for the User*, 2nd ed. Prentice Hall.
+- Blackman, R. B. & Tukey, J. W. (1959). *The Measurement of Power Spectra*. Dover.
+- Carvalho, D., Lourenço, P., & Lourenço, C. (2022). COSMIC: Identification of LTV Dynamical Systems with Smoothness Guarantees. [arXiv:2112.04355v2](https://arxiv.org/abs/2112.04355v2)
+- Lourenço, P., Carvalho, D., & Lourenço, C. (2025). Output-COSMIC: Extension to Partial State Observation. [arXiv:2509.13531](https://arxiv.org/abs/2509.13531)
 
 ## Contributing
 
-Contributions are welcome via issues and pull requests. Please ensure that `tests/runAllTests.m` passes on both MATLAB and Octave before submitting — the CI pipeline checks both platforms automatically.
+Contributions are welcome via issues and pull requests. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on function headers, code style, and testing. Please ensure that `tests/runAllTests.m` passes on both MATLAB and Octave before submitting.
 
 ## License
 
