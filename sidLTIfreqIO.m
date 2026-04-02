@@ -20,7 +20,7 @@ function [A0, B0] = sidLTIfreqIO(Y, U, H, varargin)
 %     Y - Output data, (N+1 x py) or (N+1 x py x L).
 %         First N rows are used for frequency response estimation.
 %     U - Input data, (N x q) or (N x q x L).
-%     H - Observation matrix, (py x n). Must have py <= n.
+%     H - Observation matrix, (py x n).
 %
 %   NAME-VALUE OPTIONS:
 %     'Horizon'       - Hankel matrix depth r. Default: min(floor(nf/3), 50)
@@ -139,11 +139,6 @@ function [Y_trim, U, H, horizon, maxStab, py, n, q] = parseInputs( ...
 
     py = size(H, 1);
     n  = size(H, 2);
-
-    if py > n
-        error('sid:dimMismatch', ...
-            'H has more rows (%d) than columns (%d).', py, n);
-    end
 
     % Ensure 3D
     if ndims(Y) == 2  %#ok<ISMAT>

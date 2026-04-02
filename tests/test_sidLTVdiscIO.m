@@ -615,4 +615,47 @@ assert(errA < 0.01, ...
 fprintf('  Test 17 passed: rotated H fast path (errA=%.4f, errX=%.2e).\n', ...
     errA, errX);
 
+%% Test 18: Full-rank fast path — tall H (py > n)
+% H is 4x2 with full column rank. The fast path should trigger and
+% recover states exactly via weighted least squares.
+rng(1800);
+n = 2; q = 1; N = 60; L = 5;
+A_true = [0.9 0.1; -0.1 0.8];
+B_true = [0.5; 0.3];
+H_tall = [1 0; 0 1; 1 1; 1 -1];
+py_tall = 4;
+
+X = zeros(N + 1, n, L);
+U = randn(N, q, L);
+Y = zeros(N + 1, py_tall, L);
+for l = 1:L
+    X(1, :, l) = randn(1, n);
+    Y(1, :, l) = (H_tall * X(1, :, l)')';
+    for k = 1:N
+        X(k + 1, :, l) = (A_true * X(k, :, l)' ...
+            + B_true * U(k, :, l)')';
+        Y(k + 1, :, l) = (H_tall * X(k + 1, :, l)')';
+    end
+end
+
+lam = 1e4;
+res_tall = sidLTVdiscIO(Y, U, H_tall, 'Lambda', lam);
+
+assert(res_tall.Iterations == 0, ...
+    'Tall H fast path should have 0 iters, got %d', ...
+    res_tall.Iterations);
+
+% Recovered states should match truth (noiseless)
+errX = norm(res_tall.X(:) - X(:)) / norm(X(:));
+assert(errX < 1e-10, ...
+    'Tall H: state recovery error %.2e', errX);
+
+% A should be close to true
+A_mean = mean(res_tall.A, 3);
+errA = norm(A_mean - A_true, 'fro') / norm(A_true, 'fro');
+assert(errA < 0.01, ...
+    'Tall H: A error %.4f', errA);
+fprintf('  Test 18 passed: tall H fast path (errA=%.4f, errX=%.2e).\n', ...
+    errA, errX);
+
 fprintf('test_sidLTVdiscIO: all tests passed.\n');

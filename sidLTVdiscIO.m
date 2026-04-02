@@ -23,7 +23,9 @@ function result = sidLTVdiscIO(Y, U, H, varargin)
 %   INPUTS:
 %     Y - Output data, (N+1 x py) or (N+1 x py x L).
 %     U - Input data, (N x q) or (N x q x L).
-%     H - Observation matrix, (py x n). Must have py <= n.
+%     H - Observation matrix, (py x n). When rank(H) = n (including
+%         py >= n), states are recovered exactly via weighted least
+%         squares and no EM iterations are needed.
 %
 %   NAME-VALUE OPTIONS:
 %     'Lambda'          - Regularisation strength. Scalar or (N-1 x 1).
@@ -229,10 +231,6 @@ function [Y, U, H, lambda, R, maxIter, tol, mu, muTol, doTrustRegion, ...
 
     py = size(H, 1);
     n  = size(H, 2);
-
-    if py > n
-        error('sid:dimMismatch', 'H has more rows (%d) than columns (%d).', py, n);
-    end
 
     % Ensure 3D
     if ndims(Y) == 2  %#ok<ISMAT>
