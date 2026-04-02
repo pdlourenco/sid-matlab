@@ -49,7 +49,7 @@ assert(isequal(size(result.B), [n, q, N]), 'B should be (n x q x N)');
 assert(isequal(size(result.X), [N+1, n, L]), 'X should be (N+1 x n x L)');
 assert(isequal(size(result.H), [py, n]), 'H should be (py x n)');
 assert(isequal(size(result.R), [py, py]), 'R should be (py x py)');
-assert(result.Iterations >= 1, 'Should have at least 1 iteration');
+assert(result.Iterations >= 0, 'Should have >= 0 iterations');
 fprintf('  Test 2 passed: metadata and dimensions correct.\n');
 
 %% Test 3: H = I equivalence with sidLTVdisc
@@ -185,26 +185,33 @@ end
 fprintf('  Test 5 passed: partial obs pipeline (%d iters, no NaN).\n', ...
     result.Iterations);
 
-%% Test 6: Monotone cost decrease (H=I, no trust-region)
+%% Test 6: Monotone cost decrease (partial obs, no trust-region)
 % Monotonicity is guaranteed for the alternating minimisation when
-% trust-region is off and H has full column rank (exact initialisation).
-% Reuse the Test 3 result (H=I equivalence run).
+% trust-region is off. Use partial obs to exercise the EM loop.
 rng(200);
 n = 2; q = 1; N = 50; L = 10;
 A_true = [0.9 0.1; -0.1 0.8];
 B_true = [0.5; 0.3];
+H_mono = [1 0];
 sigma = 0.02;
 X_mono = zeros(N+1, n, L);
 U_mono = randn(N, q, L);
+Y_mono = zeros(N+1, 1, L);
 for l = 1:L
     X_mono(1, :, l) = randn(1, n);
+    Y_mono(1, :, l) = H_mono * X_mono(1, :, l)';
     for k = 1:N
         X_mono(k+1, :, l) = (A_true * X_mono(k, :, l)' + ...
-            B_true * U_mono(k, :, l)')' + sigma * randn(1, n);
+            B_true * U_mono(k, :, l)')' + ...
+            sigma * randn(1, n);
+        Y_mono(k+1, :, l) = H_mono * X_mono(k+1, :, l)' ...
+            + sigma * randn(1, 1);
     end
 end
-res_mono = sidLTVdiscIO(X_mono, U_mono, eye(n), 'Lambda', 1e4);
-assert(length(res_mono.Cost) >= 2, 'Need at least 2 cost evaluations');
+res_mono = sidLTVdiscIO( ...
+    Y_mono, U_mono, H_mono, 'Lambda', 1e4);
+assert(length(res_mono.Cost) >= 2, ...
+    'Need at least 2 cost evaluations');
 for i = 2:length(res_mono.Cost)
     assert(res_mono.Cost(i) <= res_mono.Cost(i-1) + ...
         1e-8 * abs(res_mono.Cost(i-1)), ...
@@ -394,7 +401,7 @@ end
 result = sidLTVdiscIO(Y, U, H_full, 'Lambda', 1e6);
 
 assert(~any(isnan(result.A(:))), 'MSD full obs: NaN in A');
-assert(result.Iterations >= 1, 'MSD full obs: no iterations');
+assert(result.Iterations >= 0, 'MSD full obs: unexpected iterations');
 
 % Check eigenvalue recovery of the mean A (similarity-invariant)
 eig_true = sort(abs(eig(Ad)));
@@ -522,5 +529,90 @@ assert(~any(isnan(result.X(:))), 'TV MSD: NaN in X');
 assert(result.Iterations >= 1, 'TV MSD: no iterations');
 fprintf('  Test 15 passed: TV MSD partial obs (%d iters).\n', ...
     result.Iterations);
+
+%% Test 16: Full-rank fast path — H=I matches sidLTVdisc exactly
+% When H=I, the fast path recovers X = Y exactly and runs a single
+% COSMIC pass. The result should match sidLTVdisc on the same data.
+rng(1600);
+n = 2; q = 1; N = 80; L = 5;
+A_true = [0.9 0.1; -0.1 0.8];
+B_true = [0.5; 0.3];
+
+X = zeros(N + 1, n, L);
+U = randn(N, q, L);
+for l = 1:L
+    X(1, :, l) = randn(1, n);
+    for k = 1:N
+        X(k + 1, :, l) = (A_true * X(k, :, l)' ...
+            + B_true * U(k, :, l)')';
+    end
+end
+
+lam = 1e4;
+res_direct = sidLTVdisc(X, U, 'Lambda', lam);
+res_io = sidLTVdiscIO(X, U, eye(n), 'Lambda', lam);
+
+assert(res_io.Iterations == 0, ...
+    'Fast path should have 0 iterations, got %d', ...
+    res_io.Iterations);
+
+errA = norm(mean(res_io.A, 3) - mean(res_direct.A, 3), 'fro') / ...
+    norm(mean(res_direct.A, 3), 'fro');
+errB = norm(mean(res_io.B, 3) - mean(res_direct.B, 3), 'fro') / ...
+    norm(mean(res_direct.B, 3), 'fro');
+assert(errA < 1e-10, ...
+    'Fast path A should match sidLTVdisc exactly (err=%.2e)', errA);
+assert(errB < 1e-10, ...
+    'Fast path B should match sidLTVdisc exactly (err=%.2e)', errB);
+
+% X should equal Y when H=I
+errX = norm(res_io.X(:) - X(:)) / norm(X(:));
+assert(errX < 1e-12, ...
+    'Fast path X should equal Y for H=I (err=%.2e)', errX);
+fprintf('  Test 16 passed: fast path H=I matches sidLTVdisc (errA=%.2e, errB=%.2e).\n', ...
+    errA, errB);
+
+%% Test 17: Full-rank fast path — non-identity square H
+% H is a rotation matrix (full rank, py = n = 2).
+rng(1700);
+n = 2; q = 1; N = 60; L = 5;
+A_true = [0.9 0.1; -0.1 0.8];
+B_true = [0.5; 0.3];
+theta = pi / 6;
+H_rot = [cos(theta) -sin(theta)
+         sin(theta)  cos(theta)];
+
+X = zeros(N + 1, n, L);
+U = randn(N, q, L);
+Y = zeros(N + 1, n, L);
+for l = 1:L
+    X(1, :, l) = randn(1, n);
+    Y(1, :, l) = (H_rot * X(1, :, l)')';
+    for k = 1:N
+        X(k + 1, :, l) = (A_true * X(k, :, l)' ...
+            + B_true * U(k, :, l)')';
+        Y(k + 1, :, l) = (H_rot * X(k + 1, :, l)')';
+    end
+end
+
+lam = 1e4;
+res_rot = sidLTVdiscIO(Y, U, H_rot, 'Lambda', lam);
+
+assert(res_rot.Iterations == 0, ...
+    'Rotated H fast path should have 0 iters, got %d', ...
+    res_rot.Iterations);
+
+% Recovered states should match truth (noiseless)
+errX = norm(res_rot.X(:) - X(:)) / norm(X(:));
+assert(errX < 1e-10, ...
+    'Rotated H: state recovery error %.2e', errX);
+
+% A should be close to true
+A_mean = mean(res_rot.A, 3);
+errA = norm(A_mean - A_true, 'fro') / norm(A_true, 'fro');
+assert(errA < 0.01, ...
+    'Rotated H: A error %.4f', errA);
+fprintf('  Test 17 passed: rotated H fast path (errA=%.4f, errX=%.2e).\n', ...
+    errA, errX);
 
 fprintf('test_sidLTVdiscIO: all tests passed.\n');

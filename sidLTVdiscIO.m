@@ -109,6 +109,27 @@ function result = sidLTVdiscIO(Y, U, H, varargin)
     % ---- Precompute ----
     Rinv = R \ eye(py);
 
+    % ---- Full-rank fast path ----
+    % When H has full column rank the state is exactly recoverable
+    % via weighted least squares, so the EM loop is unnecessary.
+    if rank(H) == n
+        Hpinv = (H' * Rinv * H) \ (H' * Rinv);
+        X_hat = zeros(N + 1, n, L);
+        for l = 1:L
+            X_hat(:, :, l) = squeeze(Y(:, :, l)) * Hpinv';
+        end
+
+        [A, B] = cosmicStep(X_hat, U, lambda, N, n, q, L);
+
+        J = evaluateFullCost( ...
+            X_hat, A, B, Y, U, H, Rinv, ...
+            lambda, N, n, q, L);
+        result = packResult( ...
+            A, B, X_hat, H, R, J, 0, lambda, ...
+            N, n, py, q, L);
+        return;
+    end
+
     % ---- LTI Initialisation ----
     % Estimate constant dynamics (A0, B0) from the I/O transfer function
     % via Ho-Kalman realization. This gives an observable initialisation
@@ -170,12 +191,27 @@ function result = sidLTVdiscIO(Y, U, H, varargin)
     end
 
     % ---- Pack result struct ----
+    result = packResult( ...
+        A, B, X_hat, H, R, costHistory(:), nIter, lambda, ...
+        N, n, py, q, L);
+
+end
+
+% ========================================================================
+%  LOCAL FUNCTIONS
+% ========================================================================
+
+function result = packResult( ...
+    A, B, X, H, R, cost, nIter, lambda, ...
+    N, n, py, q, L)
+% PACKRESULT Build the output struct (shared by both code paths).
+
     result.A               = A;
     result.B               = B;
-    result.X               = X_hat;
+    result.X               = X;
     result.H               = H;
     result.R               = R;
-    result.Cost            = costHistory(:);
+    result.Cost            = cost;
     result.Iterations      = nIter;
     result.Lambda          = lambda;
     result.DataLength      = N;
@@ -185,12 +221,7 @@ function result = sidLTVdiscIO(Y, U, H, varargin)
     result.NumTrajectories = L;
     result.Algorithm       = 'cosmic';
     result.Method          = 'sidLTVdiscIO';
-
 end
-
-% ========================================================================
-%  LOCAL FUNCTIONS
-% ========================================================================
 
 function [Y, U, H, lambda, R, maxIter, tol, mu, muTol, doTrustRegion, ...
           N, n, py, q, L] = parseInputs(Y, U, H, varargin)
