@@ -145,8 +145,8 @@ No toolboxes are required. The entire codebase uses only core MATLAB/Octave func
 
 - Ljung, L. (1999). *System Identification: Theory for the User*, 2nd ed. Prentice Hall.
 - Blackman, R. B. & Tukey, J. W. (1959). *The Measurement of Power Spectra*. Dover.
-- Carvalho, D., Lourenço, P., & Lourenço, C. (2022). COSMIC: Identification of LTV Dynamical Systems with Smoothness Guarantees. [arXiv:2112.04355v2](https://arxiv.org/abs/2112.04355v2)
-- Lourenço, P., Carvalho, D., & Lourenço, C. (2025). Output-COSMIC: Extension to Partial State Observation. [arXiv:2509.13531](https://arxiv.org/abs/2509.13531)
+- Carvalho, M., Soares, C., Lourenço, P., and Ventura, R. (2022). "COSMIC: fast closed-form identification from large-scale data for LTV systems." [arXiv:2112.04355v2](https://arxiv.org/abs/2112.04355v2)
+- Łaszkiewicz, P., Carvalho, M., Soares, C., and Lourenço, P. (2025). "The impact of modeling approaches on controlling safety-critical, highly perturbed systems: the case for data-driven models." [arXiv:2509.13531](https://arxiv.org/abs/2509.13531)
 
 ## Contributing
 
