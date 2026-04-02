@@ -58,11 +58,11 @@ function [GStd, PhiVStd] = sidUncertainty(G, PhiV, Coh, N, W, nTraj)
     % W contains values for tau = 0..M. The full sum is W(0)^2 + 2*sum(W(1..M)^2).
     CW = W(1)^2 + 2 * sum(W(2:end).^2);
 
-    % ---- Noise spectrum variance ----
-    % Var{Phi_v} = (2 * C_W / Neff) * Phi_v^2
+    % ---- Noise spectrum variance (SPEC.md §3.1) ----
+    % Var{Phi_v(w)} = (2 * C_W / Neff) * Phi_v(w)^2
     PhiVStd = sqrt(2 * CW / Neff) * abs(PhiV);
 
-    % ---- Transfer function variance ----
+    % ---- Transfer function variance (SPEC.md §3.2) ----
     if isempty(G)
         GStd = [];
         return;
@@ -70,7 +70,7 @@ function [GStd, PhiVStd] = sidUncertainty(G, PhiV, Coh, N, W, nTraj)
 
     if ~isempty(Coh)
         % SISO case
-        % Var{G} = (C_W / Neff) * |G|^2 * (1 - gamma^2) / gamma^2
+        % Var{G(w)} = (C_W / Neff) * |G(w)|^2 * (1 - gamma^2(w)) / gamma^2(w)
         eps_floor = 1e-10;
         cohSafe = max(Coh, eps_floor);
         GVar = (CW / Neff) .* abs(G).^2 .* (1 - cohSafe) ./ cohSafe;

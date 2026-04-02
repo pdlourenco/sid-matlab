@@ -88,7 +88,8 @@ function result = sidCompare(model, y, u, varargin)
             'Model struct must have Response field (freq-domain) or A,B fields (state-space).');
     end
 
-    % ---- Compute NRMSE fit ----
+    % ---- Compute NRMSE fit (SPEC.md §15) ----
+    % fit = 100 * (1 - ||y - y_pred|| / ||y - mean(y)||)
     ny = size(y_meas, 2);
     fitVec = zeros(1, ny);
     for ch = 1:ny

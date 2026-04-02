@@ -22,7 +22,7 @@ function X = sidDFT(x, freqs, useFFT)
 %     X = sidDFT(x, freqs, true);
 %
 %   SPECIFICATION:
-%     SPEC.md §2.5 — Windowed Spectral Estimates
+%     SPEC.md §2.4 — Discrete Fourier Transform
 %
 %   See also: sidWindowedDFT, sidFreqETFE
 %

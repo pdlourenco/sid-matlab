@@ -95,7 +95,7 @@ function result = sidResidual(model, y, u, varargin)
         maxLag = min(25, floor(N_eff / 5));
     end
 
-    % ---- Whiteness test: normalised autocorrelation ----
+    % ---- Whiteness test: normalised autocorrelation (SPEC.md §14.1) ----
     ny = size(e, 2);
     % Use first channel for SISO tests; average across channels for MIMO
     if ny == 1
@@ -116,7 +116,7 @@ function result = sidResidual(model, y, u, varargin)
     confBound = 2.58 / sqrt(N_eff);
     whitenessPass = all(abs(autoCorr(2:end)) < confBound);
 
-    % ---- Independence test: normalised cross-correlation ----
+    % ---- Independence test: normalised cross-correlation (SPEC.md §14.2) ----
     if ~isTimeSeries
         % Extract first channel, first trajectory as column vector
         if ndims(u) == 3 %#ok<ISMAT>
