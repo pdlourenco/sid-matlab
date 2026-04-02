@@ -49,13 +49,15 @@ function [cost, fidelity, reg] = sidLTVevaluateCost(A, B, D, Xl, lambda, N, p, q
 %   https://github.com/pdlourenco/sid-matlab
 %  -----------------------------------------------------------------------
 
+    % J = (1/2) sum_k ||D(k)C(k) - X'(k)||^2 + (1/2) sum_k lambda(k)||C(k+1)-C(k)||^2
+    % (SPEC.md §8.3.3)
     fidelity = 0;
     priorVec = zeros(N - 1, 1);
     useCell = iscell(D);
 
     for k = 1:N
-        % Data fidelity: ||D(k)*C(k) - X'(k)||^2_F
-        % C(k) = [A(k)'; B(k)'] so D(k)*C(k) = D(k)*[A'; B']
+        % Data fidelity: ||D(k)*C(k) - X'(k)||_F^2
+        % C(k) = [A(k)'; B(k)'] (SPEC.md §8.3.1)
         Ck = [A(:, :, k)'; B(:, :, k)'];
         if useCell
             residual = D{k} * Ck - Xl{k};
