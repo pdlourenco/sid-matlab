@@ -14,7 +14,8 @@ function result = sidLTVdiscIO(Y, U, H, varargin)
 %
 %   Uses the Output-COSMIC algorithm: alternating minimisation between
 %   a COSMIC step (dynamics estimation) and an RTS smoother (state
-%   estimation), initialised by solving the joint objective at A = I.
+%   estimation), initialised via LTI realization from the I/O transfer
+%   function (sidLTIfreqIO).
 %
 %   When H = I (full state observation), this reduces to the standard
 %   COSMIC algorithm (sidLTVdisc).
@@ -22,7 +23,9 @@ function result = sidLTVdiscIO(Y, U, H, varargin)
 %   INPUTS:
 %     Y - Output data, (N+1 x py) or (N+1 x py x L).
 %     U - Input data, (N x q) or (N x q x L).
-%     H - Observation matrix, (py x n). Must have py <= n.
+%     H - Observation matrix, (py x n). When rank(H) = n (including
+%         py >= n), states are recovered exactly via weighted least
+%         squares and no EM iterations are needed.
 %
 %   NAME-VALUE OPTIONS:
 %     'Lambda'          - Regularisation strength. Scalar or (N-1 x 1).
@@ -69,9 +72,10 @@ function result = sidLTVdiscIO(Y, U, H, varargin)
 %
 %   ALGORITHM:
 %     Output-COSMIC alternating minimisation:
-%       1. Initialisation: solve J|_{A=I} jointly for states and B(k)
-%       2. COSMIC step: fix states, solve for A(k), B(k)
-%       3. State step: fix dynamics, RTS smoother for states
+%       1. LTI initialisation: estimate A0, B0 via Ho-Kalman realization
+%          of the I/O transfer function (sidLTIfreqIO)
+%       2. State step: fix dynamics, RTS smoother for states
+%       3. COSMIC step: fix states, solve for A(k), B(k)
 %       4. Repeat 2-3 until convergence
 %     Complexity: O(T * (L*N*n^3 + N*(n+q)^3)) where T is iterations.
 %
@@ -84,7 +88,7 @@ function result = sidLTVdiscIO(Y, U, H, varargin)
 %     SPEC.md section 8.12 -- Output-COSMIC
 %     docs/cosmic_output.md -- Full derivation
 %
-%   See also: sidLTVdisc, sidLTVStateEst, sidModelOrder, sidLTVdiscFrozen
+%   See also: sidLTIfreqIO, sidLTVdisc, sidLTVStateEst, sidLTVdiscFrozen
 %
 %   Changelog:
 %   2026-04-01: First version by Pedro Lourenço.
@@ -105,82 +109,111 @@ function result = sidLTVdiscIO(Y, U, H, varargin)
      N, n, py, q, L] = parseInputs(Y, U, H, varargin{:});
 
     % ---- Precompute ----
-    Rinv    = R \ eye(py);
-    HtRinvH = H' * Rinv * H;
-    HtRinv  = H' * Rinv;
+    Rinv = R \ eye(py);
 
-    % ---- Initialisation: solve J|_{A=I} ----
-    [X_hat, A, B, J0] = sidLTVdiscIOInit(Y, U, H, Rinv, HtRinvH, HtRinv, ...
-        lambda, N, n, py, q, L);
+    % ---- Full-rank fast path ----
+    % When H has full column rank the state is exactly recoverable
+    % via weighted least squares, so the EM loop is unnecessary.
+    if rank(H) == n
+        Hpinv = (H' * Rinv * H) \ (H' * Rinv);
+        X_hat = zeros(N + 1, n, L);
+        for l = 1:L
+            X_hat(:, :, l) = squeeze(Y(:, :, l)) * Hpinv';
+        end
 
-    costHistory = J0;
-
-    % ---- Alternating minimisation ----
-    if doTrustRegion
-        mu_current = mu;
-    else
-        mu_current = 0;
-    end
-
-    nIter = 0;
-    In = eye(n);
-
-    % For trust-region accept/reject: track converged cost and best state
-    J_converged_mu = J0;
-    X_best = X_hat;  A_best = A;  B_best = B;
-
-    for iter = 1:maxIter
-        % -- COSMIC step: fix states, solve for A(k), B(k) --
         [A, B] = cosmicStep(X_hat, U, lambda, N, n, q, L);
 
-        % -- State step: fix dynamics, solve for states --
+        J = evaluateFullCost( ...
+            X_hat, A, B, Y, U, H, Rinv, ...
+            lambda, N, n, q, L);
+        result = packResult( ...
+            A, B, X_hat, H, R, J, 0, lambda, ...
+            N, n, py, q, L);
+        return;
+    end
+
+    % ---- LTI Initialisation ----
+    % Estimate constant dynamics (A0, B0) from the I/O transfer function
+    % via Ho-Kalman realization. This gives an observable initialisation
+    % for any H (including py < n).
+    [A0, B0] = sidLTIfreqIO(Y, U, H);
+    A = repmat(A0, [1, 1, N]);
+    B = repmat(B0, [1, 1, N]);
+    A0_rep = repmat(A0, [1, 1, N]);  % trust-region target
+
+    % ---- Alternating minimisation (E-step first) ----
+    mu_current = doTrustRegion * mu;
+    costHistory = [];
+    nIter = 0;
+
+    % For trust-region accept/reject
+    J_converged_mu = Inf;
+    X_best = [];  A_best = A;  B_best = B;
+
+    for iter = 1:maxIter
+        % -- E-step: state estimation --
         if mu_current > 0
-            A_use = (1 - mu_current) * A + mu_current * repmat(In, [1, 1, N]);
+            A_use = (1 - mu_current) * A + mu_current * A0_rep;
         else
             A_use = A;
         end
         X_hat = sidLTVStateEst(Y, U, A_use, B, H, 'R', R);
+
+        % -- M-step: COSMIC solve --
+        [A, B] = cosmicStep(X_hat, U, lambda, N, n, q, L);
 
         % -- Evaluate cost and check convergence --
         J = evaluateFullCost(X_hat, A, B, Y, U, H, Rinv, lambda, N, n, q, L);
         costHistory(end + 1) = J;  %#ok<AGROW>
         nIter = nIter + 1;
 
-        J_prev = costHistory(end - 1);
-        relChange = abs(J - J_prev) / max(abs(J_prev), 1);
+        if nIter >= 2
+            J_prev = costHistory(end - 1);
+            relChange = abs(J - J_prev) / max(abs(J_prev), 1);
 
-        if relChange < tol
-            if doTrustRegion && mu_current > muTol
-                % Inner loop converged for current mu.
-                % Accept/reject: compare converged cost with previous mu.
-                if J <= J_converged_mu
-                    % Accept: this mu is better
+            if relChange < tol
+                if doTrustRegion && mu_current > muTol
+                    if J <= J_converged_mu
+                        J_converged_mu = J;
+                        X_best = X_hat;  A_best = A;  B_best = B;
+                        mu_current = mu_current / 2;
+                    else
+                        X_hat = X_best;  A = A_best;  B = B_best;
+                        mu_current = 0;
+                    end
+                elseif doTrustRegion && mu_current > 0
                     J_converged_mu = J;
                     X_best = X_hat;  A_best = A;  B_best = B;
-                    mu_current = mu_current / 2;
+                    mu_current = 0;
                 else
-                    % Reject: revert to best and terminate trust-region
-                    X_hat = X_best;  A = A_best;  B = B_best;
-                    mu_current = 0;  % final pass at mu=0
+                    break;
                 end
-            elseif doTrustRegion && mu_current > 0
-                % mu <= muTol: do final pass at mu = 0
-                J_converged_mu = J;
-                X_best = X_hat;  A_best = A;  B_best = B;
-                mu_current = 0;
-            else
-                break;
             end
         end
     end
 
     % ---- Pack result struct ----
+    result = packResult( ...
+        A, B, X_hat, H, R, costHistory(:), nIter, lambda, ...
+        N, n, py, q, L);
+
+end
+
+% ========================================================================
+%  LOCAL FUNCTIONS
+% ========================================================================
+
+function result = packResult( ...
+    A, B, X, H, R, cost, nIter, lambda, ...
+    N, n, py, q, L)
+% PACKRESULT Build the output struct (shared by both code paths).
+
     result.A               = A;
     result.B               = B;
-    result.X               = X_hat;
+    result.X               = X;
     result.H               = H;
     result.R               = R;
-    result.Cost            = costHistory(:);
+    result.Cost            = cost;
     result.Iterations      = nIter;
     result.Lambda          = lambda;
     result.DataLength      = N;
@@ -190,12 +223,7 @@ function result = sidLTVdiscIO(Y, U, H, varargin)
     result.NumTrajectories = L;
     result.Algorithm       = 'cosmic';
     result.Method          = 'sidLTVdiscIO';
-
 end
-
-% ========================================================================
-%  LOCAL FUNCTIONS
-% ========================================================================
 
 function [Y, U, H, lambda, R, maxIter, tol, mu, muTol, doTrustRegion, ...
           N, n, py, q, L] = parseInputs(Y, U, H, varargin)
@@ -203,10 +231,6 @@ function [Y, U, H, lambda, R, maxIter, tol, mu, muTol, doTrustRegion, ...
 
     py = size(H, 1);
     n  = size(H, 2);
-
-    if py > n
-        error('sid:dimMismatch', 'H has more rows (%d) than columns (%d).', py, n);
-    end
 
     % Ensure 3D
     if ndims(Y) == 2  %#ok<ISMAT>

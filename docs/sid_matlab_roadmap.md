@@ -361,9 +361,13 @@ Architecture is decomposed into reusable layers:
   - Model order estimation from frequency response via Hankel SVD
   - Input: any `sidFreq*` result struct; output: estimated `n` and singular values
   - Gap detection (default) or user-specified threshold method
+- `sidLTIfreqIO.m`:
+  - LTI realization from I/O frequency response via Ho-Kalman + H-basis transform
+  - Used by `sidLTVdiscIO` for initialisation when `rank(H) < n`
+  - Also usable standalone for constant-dynamics estimation from partial observations
 - `sidLTVdiscIO.m` (orchestrator):
-  - Calls `sidLTVdiscIOInit` for initialisation
-  - Alternating loop: COSMIC step (reuses `sidLTVbuildDataMatrices` + `sidLTVbuildBlockTerms` + `sidLTVcosmicSolve`) → state step (calls `sidLTVStateEst`)
+  - Fast path: when `rank(H) = n` (including `p_y > n`), recovers states via weighted LS and runs a single COSMIC step — no EM iterations needed
+  - General path: calls `sidLTIfreqIO` for LTI initialisation, then alternates COSMIC step (reuses `sidLTVbuildDataMatrices` + `sidLTVbuildBlockTerms` + `sidLTVcosmicSolve`) and state step (calls `sidLTVStateEst`)
   - Convergence monitoring (`|ΔJ/J| < ε_J`)
   - Optional trust-region interpolation `Ã(k) = (1-μ) A(k) + μ I` with adaptive μ schedule
   - Multi-trajectory support: shared `C(k)`, independent state sequences

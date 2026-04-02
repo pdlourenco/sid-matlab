@@ -49,6 +49,8 @@ testFiles = {
     'test_sidResidual'
     'test_sidCompare'
     'test_sidModelOrder'
+    'test_sidLTIfreqIO'
+    'test_sidLTVStateEst'
     'test_sidLTVdiscIO'
 };
 
