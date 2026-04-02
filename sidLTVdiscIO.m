@@ -39,7 +39,7 @@ function result = sidLTVdiscIO(Y, U, H, varargin)
 %                         Default: 'off'.
 %     'TrustRegionTol'  - Minimum mu before final pass. Default: 1e-6.
 %
-%   OUTPUT:
+%   OUTPUTS:
 %     result - Struct with fields:
 %       .A               - (n x n x N) estimated dynamics matrices
 %       .B               - (n x q x N) estimated input matrices

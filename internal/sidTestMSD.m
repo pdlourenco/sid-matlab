@@ -20,7 +20,26 @@ function [Ad, Bd] = sidTestMSD(m, k_spring, c_damp, F, Ts)
 %     Ad - (6 x 6) discrete dynamics matrix.
 %     Bd - (6 x q) discrete input matrix.
 %
+%   EXAMPLES:
+%     m = [1; 1; 1]; k = [10; 10; 10]; c = [0.1; 0.1; 0.1];
+%     F = eye(3); Ts = 0.01;
+%     [Ad, Bd] = sidTestMSD(m, k, c, F, Ts);
+%
 %   See also: test_sidLTVStateEst, test_sidLTIfreqIO, test_sidLTVdiscIO
+%
+%   Changelog:
+%   2026-04-01: First version by Pedro Lourenço.
+%
+%  -----------------------------------------------------------------------
+%   Copyright (c) 2026 Pedro Lourenço, All rights reserved.
+%   This code is released under the MIT License. See LICENSE file in the
+%   project root for full license information.
+%
+%   This function is part of the Open Source System Identification
+%   Toolbox (SID).
+%   For full documentation and examples, visit
+%   https://github.com/pdlourenco/sid-matlab
+%  -----------------------------------------------------------------------
 
     M_mat = diag(m);
     K_mat = [k_spring(1) + k_spring(2), -k_spring(2), 0

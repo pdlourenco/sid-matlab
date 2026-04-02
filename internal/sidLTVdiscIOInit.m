@@ -30,6 +30,10 @@ function [X_hat, A_hat, B_hat, cost] = sidLTVdiscIOInit( ...
 %     B_hat - (n x q x N) estimated input matrices.
 %     cost  - Scalar, value of J at the initialisation solution.
 %
+%   EXAMPLES:
+%     [X0, A0, B0, cost0] = sidLTVdiscIOInit(Y, U, H, Rinv, ...
+%         HtRinvH, HtRinv, lambda, N, n, py, q, L);
+%
 %   ALGORITHM:
 %     Composite block tridiagonal solve per docs/cosmic_output.md
 %     Appendix B. Block size is (Ln + nq) for k=0..N-1 and Ln for k=N.

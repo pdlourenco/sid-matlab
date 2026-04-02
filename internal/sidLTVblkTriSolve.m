@@ -31,6 +31,13 @@ function [w, Lbd] = sidLTVblkTriSolve(S, U, Theta)
 %     Lbd - Cell array of length K. Lbd{k} is a (m_k x m_k) forward
 %           Schur complement (stored for potential reuse in uncertainty).
 %
+%   EXAMPLES:
+%     K = 5; m = 3;
+%     S = arrayfun(@(k) eye(m) * (k+1), 1:K, 'UniformOutput', false);
+%     U = arrayfun(@(k) 0.1*eye(m), 1:K-1, 'UniformOutput', false);
+%     Theta = arrayfun(@(k) ones(m, 1), 1:K, 'UniformOutput', false);
+%     [w, Lbd] = sidLTVblkTriSolve(S, U, Theta);
+%
 %   ALGORITHM:
 %     Forward pass (Gaussian elimination):
 %       Lbd{1} = S{1},  Y{1} = Lbd{1} \ Theta{1}

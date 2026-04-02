@@ -38,3 +38,6 @@ jobs:
 
       - name: Metrics check (mh_metric)
         run: mh_metric --ci .
+
+      - name: Function header standard
+        run: python .github/scripts/check_headers.py
