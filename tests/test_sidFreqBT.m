@@ -105,4 +105,42 @@ for i = 1:length(idx)
     assert(relErr < 0.15, 'Magnitude at freq %d should match true system (relErr=%.3f)', k, relErr);
 end
 
+%% Test 14: Multi-trajectory — NumTrajectories field and variance reduction
+rng(14);
+N14 = 2000; L14 = 8;
+u14 = randn(N14, 1, L14);
+y14 = zeros(N14, 1, L14);
+for l = 1:L14
+    y14(:, :, l) = filter(1, [1 -0.9], u14(:, :, l)) ...
+        + 0.3 * randn(N14, 1);
+end
+
+% Multi-trajectory result
+res_mt = sidFreqBT(y14, u14, 'WindowSize', 50);
+assert(res_mt.NumTrajectories == L14, ...
+    'NumTrajectories should be %d, got %d', L14, res_mt.NumTrajectories);
+
+% Single-trajectory result
+res_st = sidFreqBT(y14(:, :, 1), u14(:, :, 1), 'WindowSize', 50);
+assert(res_st.NumTrajectories == 1, 'Single traj should have NumTrajectories=1');
+
+% Variance reduction: multi-traj std should be roughly std_1 / sqrt(L)
+ratio = median(res_mt.ResponseStd) / median(res_st.ResponseStd);
+expected = 1 / sqrt(L14);
+assert(ratio < expected * 2 && ratio > expected * 0.3, ...
+    'Variance reduction ratio %.3f should be near 1/sqrt(%d)=%.3f', ...
+    ratio, L14, expected);
+
+% Ensemble-averaged estimate should be closer to truth than single
+w = res_mt.Frequency;
+G_true = 1 ./ (1 - 0.9 * exp(-1j * w));
+err_mt = median(abs(abs(res_mt.Response) - abs(G_true)));
+err_st = median(abs(abs(res_st.Response) - abs(G_true)));
+assert(err_mt < err_st, ...
+    'Multi-traj error %.4f should be less than single %.4f', ...
+    err_mt, err_st);
+
+fprintf('  Test 14 passed: multi-trajectory (L=%d, ratio=%.3f).\n', ...
+    L14, ratio);
+
 fprintf('  test_sidFreqBT: ALL PASSED\n');

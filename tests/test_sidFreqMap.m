@@ -207,4 +207,36 @@ assert(corr_mat(1,2) > 0.8, ...
     corr_mat(1,2));
 fprintf('  Test 23 passed: BT and Welch correlated (r=%.4f)\n', corr_mat(1,2));
 
+%% Test 24: Multi-trajectory — NumTrajectories and variance reduction (BT)
+rng(24);
+N24 = 4000; L24 = 6;
+u24 = randn(N24, 1, L24);
+y24 = zeros(N24, 1, L24);
+for l = 1:L24
+    y24(:, :, l) = filter(1, [1 -0.8], u24(:, :, l)) ...
+        + 0.2 * randn(N24, 1);
+end
+
+res_mt = sidFreqMap(y24, u24, 'SegmentLength', 512, 'Algorithm', 'bt');
+assert(res_mt.NumTrajectories == L24, ...
+    'NumTrajectories should be %d, got %d', L24, res_mt.NumTrajectories);
+
+res_st = sidFreqMap(y24(:,:,1), u24(:,:,1), 'SegmentLength', 512, ...
+    'Algorithm', 'bt');
+assert(res_st.NumTrajectories == 1, 'Single traj NumTrajectories should be 1');
+
+% Multi-traj ResponseStd should be smaller (take median across freq & time)
+std_mt = median(res_mt.ResponseStd(:));
+std_st = median(res_st.ResponseStd(:));
+assert(std_mt < std_st, ...
+    'Multi-traj std %.4f should be < single-traj %.4f', std_mt, std_st);
+
+fprintf('  Test 24 passed: multi-trajectory FreqMap (L=%d).\n', L24);
+
+%% Test 25: Multi-trajectory — Welch algorithm
+res_wl_mt = sidFreqMap(y24, u24, 'SegmentLength', 512, 'Algorithm', 'welch');
+assert(res_wl_mt.NumTrajectories == L24, ...
+    'Welch NumTrajectories should be %d', L24);
+fprintf('  Test 25 passed: multi-trajectory FreqMap Welch.\n');
+
 fprintf('test_sidFreqMap: ALL TESTS PASSED\n');

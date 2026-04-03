@@ -118,4 +118,32 @@ assert(size(result_mimo.Response, 1) == nf && size(result_mimo.Response, 2) == 2
 result = sidFreqETFE(y, u, 'SampleTime', 0.001);
 assert(result.SampleTime == 0.001, 'SampleTime should be 0.001');
 
+%% Test 15: Multi-trajectory — NumTrajectories and ensemble averaging
+rng(15);
+N15 = 2000; L15 = 8;
+u15 = randn(N15, 1, L15);
+y15 = zeros(N15, 1, L15);
+for l = 1:L15
+    y15(:, :, l) = filter(1, [1 -0.5], u15(:, :, l)) ...
+        + 0.3 * randn(N15, 1);
+end
+
+res_mt = sidFreqETFE(y15, u15);
+assert(res_mt.NumTrajectories == L15, ...
+    'NumTrajectories should be %d, got %d', L15, res_mt.NumTrajectories);
+
+res_st = sidFreqETFE(y15(:, :, 1), u15(:, :, 1));
+assert(res_st.NumTrajectories == 1, 'Single traj should have NumTrajectories=1');
+
+% Ensemble-averaged magnitude should be closer to truth
+w = res_mt.Frequency;
+G_true = 1 ./ (1 - 0.5 * exp(-1j * w));
+err_mt = median(abs(abs(res_mt.Response) - abs(G_true)));
+err_st = median(abs(abs(res_st.Response) - abs(G_true)));
+assert(err_mt < err_st * 1.5, ...
+    'Multi-traj error %.4f should improve on single %.4f', ...
+    err_mt, err_st);
+
+fprintf('  Test 15 passed: multi-trajectory ETFE (L=%d).\n', L15);
+
 fprintf('  test_sidFreqETFE: ALL PASSED\n');

@@ -137,4 +137,30 @@ assert(max(abs(result.FrequencyRad - 2 * pi * result.Frequency)) < 1e-12, ...
     'FrequencyRad should be 2*pi*Frequency');
 fprintf('  Test 16 passed: FrequencyRad consistent\n');
 
+%% Test 17: Multi-trajectory — ensemble averaging reduces noise
+rng(17);
+N17 = 4000; L17 = 10;
+% Deterministic sinusoid + independent noise per trajectory
+t17 = (0:N17-1)';
+sig = sin(2 * pi * 0.1 * t17);
+y17 = zeros(N17, 1, L17);
+for l = 1:L17
+    y17(:, :, l) = sig + randn(N17, 1);
+end
+
+wlen = 256;
+res_mt = sidSpectrogram(y17, 'WindowLength', wlen, 'Overlap', 128);
+res_st = sidSpectrogram(y17(:, :, 1), 'WindowLength', wlen, 'Overlap', 128);
+
+% At the signal frequency, variance across time segments should be lower
+% for ensemble average (noise cancels, signal is deterministic)
+[~, fbin] = min(abs(res_mt.Frequency - 0.1));
+var_mt = var(res_mt.Power(fbin, :));
+var_st = var(res_st.Power(fbin, :));
+assert(var_mt < var_st, ...
+    'Ensemble PSD variance at signal freq: %.4f should be < %.4f', ...
+    var_mt, var_st);
+
+fprintf('  Test 17 passed: multi-trajectory spectrogram.\n');
+
 fprintf('test_sidSpectrogram: ALL TESTS PASSED\n');

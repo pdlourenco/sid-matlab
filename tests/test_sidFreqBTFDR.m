@@ -116,4 +116,30 @@ for i = 1:length(idx)
     assert(relErr < 0.25, 'Magnitude at freq %d should match (relErr=%.3f)', k, relErr);
 end
 
+%% Test 16: Multi-trajectory — NumTrajectories and variance reduction
+rng(16);
+N16 = 2000; L16 = 8;
+u16 = randn(N16, 1, L16);
+y16 = zeros(N16, 1, L16);
+for l = 1:L16
+    y16(:, :, l) = filter(1, [1 -0.9], u16(:, :, l)) ...
+        + 0.3 * randn(N16, 1);
+end
+
+res_mt = sidFreqBTFDR(y16, u16, 'Resolution', 0.2);
+assert(res_mt.NumTrajectories == L16, ...
+    'NumTrajectories should be %d, got %d', L16, res_mt.NumTrajectories);
+
+res_st = sidFreqBTFDR(y16(:, :, 1), u16(:, :, 1), 'Resolution', 0.2);
+assert(res_st.NumTrajectories == 1, 'Single traj should have NumTrajectories=1');
+
+ratio = median(res_mt.ResponseStd) / median(res_st.ResponseStd);
+expected = 1 / sqrt(L16);
+assert(ratio < expected * 2.5 && ratio > expected * 0.2, ...
+    'Variance reduction ratio %.3f should be near %.3f', ...
+    ratio, expected);
+
+fprintf('  Test 16 passed: multi-trajectory (L=%d, ratio=%.3f).\n', ...
+    L16, ratio);
+
 fprintf('  test_sidFreqBTFDR: ALL PASSED\n');
