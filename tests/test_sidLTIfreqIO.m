@@ -278,4 +278,66 @@ assert(mp_err < 0.5, ...
 fprintf('  Test 9 passed: MSD partial obs LTI (mp_err=%.4f).\n', ...
     mp_err);
 
+%% Test 10: Cell input — equal-length trajectories match 3D
+rng(1000);
+n = 2; q = 1; N = 500; L = 5;
+A_true = [0.9 0.1; -0.1 0.8];
+B_true = [0.5; 0.3];
+H10 = eye(n);
+
+Y10 = zeros(N + 1, n, L);
+U10 = randn(N, q, L);
+for l = 1:L
+    x = zeros(N + 1, n);
+    x(1, :) = randn(1, n);
+    for k = 1:N
+        x(k+1, :) = (A_true * x(k, :)' + B_true * U10(k, :, l)')';
+    end
+    Y10(:, :, l) = x * H10';
+end
+
+[A_3d, B_3d] = sidLTIfreqIO(Y10, U10, H10);
+
+Y_cell = cell(L, 1);
+U_cell = cell(L, 1);
+for l = 1:L
+    Y_cell{l} = Y10(:, :, l);
+    U_cell{l} = U10(:, :, l);
+end
+[A_cell, B_cell] = sidLTIfreqIO(Y_cell, U_cell, H10);
+
+errA = norm(A_cell - A_3d, 'fro');
+errB = norm(B_cell - B_3d, 'fro');
+assert(errA < 1e-10, 'Cell vs 3D: A mismatch %.2e', errA);
+assert(errB < 1e-10, 'Cell vs 3D: B mismatch %.2e', errB);
+fprintf('  Test 10 passed: cell matches 3D (errA=%.2e).\n', errA);
+
+%% Test 11: Cell input — variable-length with trimming
+rng(1100);
+n = 2; q = 1;
+A_true = [0.9 0.1; -0.1 0.8];
+B_true = [0.5; 0.3];
+H11 = eye(n);
+horizons_11 = [200; 180; 190; 40; 195];
+
+Y_cell = cell(5, 1);
+U_cell = cell(5, 1);
+for l = 1:5
+    Nl = horizons_11(l);
+    U_cell{l} = randn(Nl, q);
+    x = zeros(Nl + 1, n);
+    x(1, :) = randn(1, n);
+    for k = 1:Nl
+        x(k+1, :) = (A_true * x(k, :)' + B_true * U_cell{l}(k, :)')';
+    end
+    Y_cell{l} = x * H11';
+end
+
+% Traj 4 (horizon=40) < 2/3*200=134, should be discarded
+[A0, B0] = sidLTIfreqIO(Y_cell, U_cell, H11);
+
+eig_err = max(abs(sort(abs(eig(A0))) - sort(abs(eig(A_true)))));
+assert(eig_err < 0.15, 'Cell trimmed: eig error %.4f', eig_err);
+fprintf('  Test 11 passed: cell with trimming (eig_err=%.4f).\n', eig_err);
+
 fprintf('test_sidLTIfreqIO: all tests passed.\n');

@@ -205,4 +205,88 @@ assert(pos_err < 0.01, ...
 fprintf('  Test 7 passed: multi-traj MSD (pos=%.4f).\n', ...
     pos_err);
 
+%% Test 8: Cell input matches 3D for equal-length trajectories
+rng(800);
+n = 2; q = 1; N = 50; L = 3;
+A_true = [0.9 0.1; -0.1 0.8];
+B_true = [0.5; 0.3];
+H8 = [1 0];  % partial obs
+
+A8 = repmat(A_true, [1 1 N]);
+B8 = repmat(B_true, [1 1 N]);
+
+Y8 = zeros(N + 1, 1, L);
+U8 = randn(N, q, L);
+X8 = zeros(N + 1, n, L);
+for l = 1:L
+    X8(1, :, l) = randn(1, n);
+    Y8(1, :, l) = H8 * X8(1, :, l)';
+    for k = 1:N
+        X8(k+1, :, l) = (A_true * X8(k, :, l)' + B_true * U8(k, :, l)')';
+        Y8(k+1, :, l) = H8 * X8(k+1, :, l)';
+    end
+end
+
+X_3d = sidLTVStateEst(Y8, U8, A8, B8, H8);
+
+Y_cell = cell(L, 1);
+U_cell = cell(L, 1);
+for l = 1:L
+    Y_cell{l} = Y8(:, :, l);
+    U_cell{l} = U8(:, :, l);
+end
+X_cell = sidLTVStateEst(Y_cell, U_cell, A8, B8, H8);
+
+assert(iscell(X_cell), 'Cell input should produce cell output');
+for l = 1:L
+    errXl = norm(X_cell{l} - X_3d(:, :, l));
+    assert(errXl < 1e-8, 'Cell vs 3D: X{%d} mismatch %.2e', l, errXl);
+end
+fprintf('  Test 8 passed: cell matches 3D.\n');
+
+%% Test 9: Variable-length cell input
+rng(900);
+n = 2; q = 1;
+A_true = [0.9 0.1; -0.1 0.8];
+B_true = [0.5; 0.3];
+H9 = [1 0];
+horizons_9 = [60; 40; 50];
+L = length(horizons_9);
+N = max(horizons_9);
+
+A9 = repmat(A_true, [1 1 N]);
+B9 = repmat(B_true, [1 1 N]);
+
+Y_cell = cell(L, 1);
+U_cell = cell(L, 1);
+X_true_cell = cell(L, 1);
+for l = 1:L
+    Nl = horizons_9(l);
+    U_cell{l} = randn(Nl, q);
+    X_true_cell{l} = zeros(Nl + 1, n);
+    X_true_cell{l}(1, :) = randn(1, n);
+    for k = 1:Nl
+        X_true_cell{l}(k+1, :) = ...
+            (A_true * X_true_cell{l}(k, :)' ...
+            + B_true * U_cell{l}(k, :)')';
+    end
+    Y_cell{l} = X_true_cell{l} * H9';
+end
+
+X_cell = sidLTVStateEst(Y_cell, U_cell, A9, B9, H9);
+assert(iscell(X_cell), 'VarLen should return cell');
+assert(numel(X_cell) == L, 'Should have %d cells', L);
+
+for l = 1:L
+    Nl = horizons_9(l);
+    assert(size(X_cell{l}, 1) == Nl + 1, ...
+        'X{%d} should have %d rows', l, Nl + 1);
+    % Measurements should be consistent
+    Y_recon = X_cell{l} * H9';
+    errY = norm(Y_recon - Y_cell{l}) / norm(Y_cell{l});
+    assert(errY < 0.15, ...
+        'VarLen: Y reconstruction error %.4f for traj %d', errY, l);
+end
+fprintf('  Test 9 passed: variable-length cell input.\n');
+
 fprintf('test_sidLTVStateEst: all tests passed.\n');
