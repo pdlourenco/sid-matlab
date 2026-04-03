@@ -171,4 +171,52 @@ assert(n == 2, ...
     'Expected n = 2 for noisy 2nd-order system with N=5000, got n = %d', n);
 fprintf('  Test 10 passed: noisy data still detects n = %d.\n', n);
 
+%% Test 11: Gap method — verify SingularValues and gap location (SPEC §8.12.12)
+% n = argmax_k (sigma_k / sigma_{k+1})
+% For a 2nd-order system, the gap should be at k=2.
+rng(1100);
+N = 3000;
+u = randn(N, 1);
+% 2nd-order: y(k) = -a1*y(k-1) - a2*y(k-2) + b1*u(k-1)
+a1 = -1.5; a2 = 0.7; b1 = 1;
+y = zeros(N, 1);
+for k = 3:N
+    y(k) = -a1 * y(k-1) - a2 * y(k-2) + b1 * u(k-1) + 0.01 * randn;
+end
+
+G = sidFreqBT(y, u, 'WindowSize', 80);
+[n_est, info] = sidModelOrder(G);
+
+assert(n_est == 2, 'Expected n=2, got n=%d', n_est);
+
+% SingularValues should be returned and have correct properties
+assert(isfield(info, 'SingularValues'), 'Should have SingularValues');
+sv = info.SingularValues;
+assert(all(sv >= 0), 'Singular values should be non-negative');
+assert(issorted(flipud(sv(:))), 'Singular values should be non-increasing');
+
+% Verify the gap is at position n_est: sigma_2/sigma_3 should be the max ratio
+ratios = sv(1:end-1) ./ max(sv(2:end), eps);
+[~, gap_idx] = max(ratios);
+assert(gap_idx == n_est, ...
+    'Gap should be at index %d, found at %d', n_est, gap_idx);
+
+% The gap ratio should be large (clear separation)
+assert(ratios(n_est) > 5, ...
+    'Gap ratio at n=%d should be large, got %.2f', n_est, ratios(n_est));
+fprintf('  Test 11 passed: gap at k=%d (ratio=%.1f).\n', ...
+    gap_idx, ratios(n_est));
+
+%% Test 12: Threshold method — verify count formula (SPEC §8.12.12)
+% n = count of sigma_k / sigma_1 > threshold
+[n_thr, info_thr] = sidModelOrder(G, 'Threshold', 0.01);
+sv = info_thr.SingularValues;
+
+% Manual: count how many sigma_k / sigma_1 exceed threshold
+manual_n = sum(sv / sv(1) > 0.01);
+assert(n_thr == manual_n, ...
+    'Threshold method: n=%d should match manual count %d', ...
+    n_thr, manual_n);
+fprintf('  Test 12 passed: threshold method (n=%d).\n', n_thr);
+
 fprintf('test_sidModelOrder: all tests passed.\n');

@@ -268,4 +268,57 @@ assert(errB < 0.01, 'Noiseless LTI B recovery should be near-exact: %.4f', errB)
 fprintf(['  Test 13 passed: noiseless LTI near-exact recovery' ...
     ' (errA=%.6f, errB=%.6f).\n'], errA, errB);
 
+%% Test 14: Cost decomposition — fidelity + reg = total (SPEC §8.3.3)
+% Verify Cost(1) = Cost(2) + Cost(3) across different lambda regimes
+rng(1400);
+p = 2; q = 1; N = 25; L = 5;
+A_true = [0.9 0.1; -0.1 0.8];
+B_true = [0.5; 0.3];
+X = zeros(N+1, p, L);
+U = randn(N, q, L);
+for l = 1:L
+    X(1, :, l) = randn(1, p);
+    for k = 1:N
+        X(k+1, :, l) = (A_true * X(k, :, l)' + B_true * U(k, :, l)')' ...
+            + 0.05 * randn(1, p);
+    end
+end
+
+for lam = [1e0, 1e3, 1e6, 1e9]
+    r = sidLTVdisc(X, U, 'Lambda', lam);
+    total = r.Cost(1);
+    fidelity = r.Cost(2);
+    reg = r.Cost(3);
+    assert(abs(total - (fidelity + reg)) < 1e-8 * max(total, 1), ...
+        'Cost decomposition: %.6f != %.6f + %.6f at lambda=%g', ...
+        total, fidelity, reg, lam);
+end
+fprintf('  Test 14 passed: cost decomposition across lambda regimes.\n');
+
+%% Test 15: High lambda → nearly constant A, B (maximum regularisation)
+r_high = sidLTVdisc(X, U, 'Lambda', 1e12);
+A_std = std(r_high.A, 0, 3);
+A_var = max(A_std(:));
+B_std = std(r_high.B, 0, 3);
+B_var = max(B_std(:));
+assert(A_var < 1e-6, ...
+    'Very high lambda: A should be near-constant, var=%.2e', A_var);
+assert(B_var < 1e-6, ...
+    'Very high lambda: B should be near-constant, var=%.2e', B_var);
+fprintf('  Test 15 passed: high lambda gives constant A,B (var=%.2e).\n', ...
+    A_var);
+
+%% Test 16: Low lambda → more temporal variation (SPEC §8.3.3)
+r_low = sidLTVdisc(X, U, 'Lambda', 1e-3);
+% Low lambda should allow more temporal variation than high lambda
+A_std_low = std(r_low.A, 0, 3);
+A_std_hi  = std(r_high.A, 0, 3);
+assert(max(A_std_low(:)) > max(A_std_hi(:)), ...
+    'Low lambda A should vary more than high lambda');
+% Low lambda: fidelity should be at least as good (lower or equal)
+assert(r_low.Cost(2) <= r_high.Cost(2) * 1.01, ...
+    'Low lambda fidelity %.6f should be <= high lambda %.6f', ...
+    r_low.Cost(2), r_high.Cost(2));
+fprintf('  Test 16 passed: low vs high lambda variation.\n');
+
 fprintf('test_sidLTVdisc: ALL TESTS PASSED\n');

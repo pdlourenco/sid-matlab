@@ -163,4 +163,43 @@ assert(var_mt < var_st, ...
 
 fprintf('  Test 17 passed: multi-trajectory spectrogram.\n');
 
+%% Test 18: S1 normalization and one-sided doubling (SPEC 7.3)
+% P(w) = (1/(Fs*S1)) * |X(w)|^2 with S1 = sum(w(n)^2)
+% Positive-freq bins (not DC or Nyquist) are doubled for one-sided.
+%
+% Parseval check: integral of PSD should equal signal variance.
+% For white noise: integral P(w) dw ≈ sigma^2.
+% Discrete: sum(P) * (Fs/nBins) ≈ sigma^2 for single-segment.
+rng(1800);
+N18 = 1024;
+sigma = 2.0;
+y18 = sigma * randn(N18, 1);
+
+% Use rectangular window and window=data length for a single segment
+res18 = sidSpectrogram(y18, 'WindowLength', N18, 'Window', 'rectangular', ...
+    'Overlap', 0);
+
+% Only one time segment
+assert(size(res18.Power, 2) == 1, 'Should have 1 time segment');
+
+% Frequency resolution: Fs/N18, default Fs=1
+df = 1 / N18;
+psd_integral = sum(res18.Power(:, 1)) * df;
+
+% Should approximate sigma^2 = 4.0
+assert(abs(psd_integral - sigma^2) / sigma^2 < 0.15, ...
+    'PSD integral %.4f should approximate sigma^2=%.1f', ...
+    psd_integral, sigma^2);
+
+% DC bin (index 1) should NOT be doubled — verify it's smaller than
+% the mean of interior bins (which are doubled)
+interior_mean = mean(res18.Power(2:end-1, 1));
+dc_val = res18.Power(1, 1);
+% DC should be about half the interior (interior is doubled)
+assert(dc_val < interior_mean, ...
+    'DC (%.4f) should be less than interior mean (%.4f) due to doubling', ...
+    dc_val, interior_mean);
+fprintf('  Test 18 passed: PSD normalization (integral=%.3f, sigma^2=%.1f).\n', ...
+    psd_integral, sigma^2);
+
 fprintf('test_sidSpectrogram: ALL TESTS PASSED\n');

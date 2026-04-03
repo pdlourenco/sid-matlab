@@ -100,4 +100,56 @@ end
 assert(plotOk, 'Plot option should not error');
 fprintf('  Test 6 passed: plot option works.\n');
 
+%% Test 7: Confidence bound formula verification (SPEC §14.3)
+% ConfidenceBound should be 2.58/sqrt(N)
+rng(6007);
+N = 1600;
+u = randn(N, 1);
+y = filter(1, [1 -0.7], u) + 0.1 * randn(N, 1);
+result_cb = sidFreqBT(y, u, 'WindowSize', 30);
+resid_cb = sidResidual(result_cb, y, u);
+
+expected_bound = 2.58 / sqrt(N);
+assert(abs(resid_cb.ConfidenceBound - expected_bound) < 1e-10, ...
+    'ConfidenceBound should be 2.58/sqrt(N)=%.6f, got %.6f', ...
+    expected_bound, resid_cb.ConfidenceBound);
+fprintf('  Test 7 passed: confidence bound = 2.58/sqrt(N).\n');
+
+%% Test 8: Normalised autocorrelation formula (SPEC §14.2)
+% r_ee(0) should be exactly 1 (normalised by R_ee(0))
+rng(6008);
+N = 1000;
+u = randn(N, 1);
+y = filter(1, [1 -0.8], u) + 0.1 * randn(N, 1);
+result_ac = sidFreqBT(y, u, 'WindowSize', 30);
+resid_ac = sidResidual(result_ac, y, u);
+
+assert(abs(resid_ac.AutoCorr(1) - 1.0) < 1e-10, ...
+    'r_ee(0) should be 1.0, got %.6f', resid_ac.AutoCorr(1));
+
+% WhitenessPass should be: all |r_ee(tau)| < 2.58/sqrt(N) for tau >= 1
+bound = resid_ac.ConfidenceBound;
+autoLags = resid_ac.AutoCorr(2:end);  % exclude lag 0
+manual_pass = all(abs(autoLags) < bound);
+assert(resid_ac.WhitenessPass == manual_pass, ...
+    'WhitenessPass should match manual check');
+fprintf('  Test 8 passed: autocorrelation normalised, r_ee(0)=1.\n');
+
+%% Test 9: Cross-correlation normalisation (SPEC §14.2)
+% r_eu(tau) = R_eu(tau) / sqrt(R_ee(0) * R_uu(0))
+% IndependencePass: all |r_eu(tau)| < 2.58/sqrt(N)
+rng(6009);
+N = 1000;
+u = randn(N, 1);
+y = filter(1, [1 -0.8], u) + 0.1 * randn(N, 1);
+result_cc = sidFreqBT(y, u, 'WindowSize', 30);
+resid_cc = sidResidual(result_cc, y, u);
+
+assert(~isempty(resid_cc.CrossCorr), 'CrossCorr should not be empty');
+bound_cc = resid_cc.ConfidenceBound;
+manual_indep = all(abs(resid_cc.CrossCorr) < bound_cc);
+assert(resid_cc.IndependencePass == manual_indep, ...
+    'IndependencePass should match manual check');
+fprintf('  Test 9 passed: cross-correlation independence check.\n');
+
 fprintf('  test_sidResidual: ALL PASSED\n');

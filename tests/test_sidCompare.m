@@ -112,4 +112,66 @@ assert(isfield(comp, 'Method'), 'Should have Method field');
 assert(strcmp(comp.Method, 'sidFreqBT'), 'Method should match source model');
 fprintf('  Test 6 passed: output struct has correct fields.\n');
 
+%% Test 7: NRMSE formula verification (SPEC §15.3)
+% fit = 100 * (1 - ||y - y_pred|| / ||y - mean(y)||)
+rng(7007);
+N = 500;
+u = randn(N, 1);
+y = filter(1, [1 -0.8], u) + 0.05 * randn(N, 1);
+result_f = sidFreqBT(y, u, 'WindowSize', 30);
+comp_f = sidCompare(result_f, y, u);
+
+% Manually compute NRMSE from predicted and measured
+y_pred = comp_f.Predicted;
+y_meas = comp_f.Measured;
+manual_fit = 100 * (1 - norm(y_meas - y_pred) / norm(y_meas - mean(y_meas)));
+assert(abs(comp_f.Fit - manual_fit) < 1e-8, ...
+    'Fit=%.4f should match manual NRMSE=%.4f', comp_f.Fit, manual_fit);
+fprintf('  Test 7 passed: NRMSE formula verified (fit=%.1f%%).\n', ...
+    comp_f.Fit);
+
+%% Test 8: Negative fit — model worse than mean (SPEC §15.3)
+rng(7008);
+N = 500;
+u = randn(N, 1);
+y = filter(1, [1 -0.8], u) + 0.05 * randn(N, 1);
+
+% Build a deliberately terrible model by using wrong system
+y_wrong = filter(1, [1 0.99], u);  % completely wrong dynamics
+result_wrong = sidFreqBT(y_wrong, u, 'WindowSize', 10);
+comp_wrong = sidCompare(result_wrong, y, u);
+
+% Fit can be negative when model is worse than predicting the mean
+assert(comp_wrong.Fit < 50, ...
+    'Wrong model should give poor fit, got %.1f%%', comp_wrong.Fit);
+fprintf('  Test 8 passed: poor model fit = %.1f%%.\n', comp_wrong.Fit);
+
+%% Test 9: NRMSE per channel for MIMO (SPEC §15.3)
+rng(7009);
+N = 1000;
+u = randn(N, 1);
+y1 = filter(1, [1 -0.9], u);             % very clean
+y2 = filter(0.3, [1 -0.5], u) + randn(N, 1);  % very noisy
+y = [y1, y2];
+
+result_m = sidFreqBT(y, u, 'WindowSize', 40);
+comp_m = sidCompare(result_m, y, u);
+
+assert(length(comp_m.Fit) == 2, 'Should have 2 fit values');
+% Channel 1 (clean) should have much better fit than channel 2 (noisy)
+assert(comp_m.Fit(1) > comp_m.Fit(2), ...
+    'Clean channel fit %.1f%% should exceed noisy %.1f%%', ...
+    comp_m.Fit(1), comp_m.Fit(2));
+
+% Verify per-channel formula
+for ch = 1:2
+    ym = comp_m.Measured(:, ch);
+    yp = comp_m.Predicted(:, ch);
+    manual = 100 * (1 - norm(ym - yp) / norm(ym - mean(ym)));
+    assert(abs(comp_m.Fit(ch) - manual) < 1e-8, ...
+        'Channel %d: Fit=%.4f != manual=%.4f', ch, comp_m.Fit(ch), manual);
+end
+fprintf('  Test 9 passed: per-channel NRMSE (%.1f%%, %.1f%%).\n', ...
+    comp_m.Fit(1), comp_m.Fit(2));
+
 fprintf('  test_sidCompare: ALL PASSED\n');
