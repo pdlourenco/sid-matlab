@@ -1,12 +1,12 @@
 # sid — Algorithm Specification
 
-**Version:** 0.6.0-draft
-**Date:** 2026-03-31
+**Version:** 1.0.0
+**Date:** 2026-04-04
 **Reference:** Ljung, L. *System Identification: Theory for the User*, 2nd ed., Prentice Hall, 1999.
 
 ---
 
-> **Implementation status:** §1–5 (frequency-domain estimation), §6 (`sidFreqMap` BT + Welch), §7 (spectrograms), §8 base + §8.4 (`sidLTVdisc`, `sidLTVdiscTune`), §8.8 (variable-length trajectories), §8.9 (Bayesian uncertainty + `sidLTVdiscFrozen`), §8.11 (lambda tuning via frequency response), §9 (`sidFreqETFE`, `sidFreqBTFDR`), §9a (multi-trajectory spectral), §13 (`sidDetrend`), §14 (`sidResidual`), and §15 (`sidCompare`) are implemented. §8.12 (output-COSMIC, `sidLTVdiscIO`, `sidLTVStateEst`, `sidModelOrder`) and §8.13 (`sidLTIfreqIO`) are implemented. §8.10 (online/recursive COSMIC) describes a planned feature not yet implemented.
+> **Implementation status:** All sections are implemented except §8.10 (online/recursive COSMIC), which is deferred to v2.
 
 ---
 
