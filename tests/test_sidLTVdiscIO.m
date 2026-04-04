@@ -831,4 +831,82 @@ assert(eig_err < 0.3, ...
     'LTI trimmed: eigenvalue error %.4f', eig_err);
 fprintf('  Test 22 passed: LTI trimming (eig_err=%.4f).\n', eig_err);
 
+%% Test 23: Convergence criterion — early stop when |dJ/J| < tol (SPEC §8.12.3)
+rng(2300);
+n = 2; q = 1; N = 40; L = 5; py = 1;
+A_true = [0.9 0.1; -0.1 0.8];
+B_true = [0.5; 0.3];
+H_23 = [1 0];
+
+X23 = zeros(N + 1, n, L);
+U23 = randn(N, q, L);
+Y23 = zeros(N + 1, py, L);
+for l = 1:L
+    X23(1, :, l) = randn(1, n);
+    Y23(1, :, l) = H_23 * X23(1, :, l)';
+    for k = 1:N
+        X23(k+1, :, l) = (A_true * X23(k, :, l)' ...
+            + B_true * U23(k, :, l)')';
+        Y23(k+1, :, l) = H_23 * X23(k+1, :, l)';
+    end
+end
+
+% Use generous MaxIter but moderate Tolerance — should converge early
+tol_val = 1e-3;
+res_conv = sidLTVdiscIO(Y23, U23, H_23, 'Lambda', 1e5, ...
+    'MaxIter', 200, 'Tolerance', tol_val);
+
+assert(res_conv.Iterations < 200, ...
+    'Should converge before 200 iters, got %d', res_conv.Iterations);
+assert(res_conv.Iterations >= 2, ...
+    'Should take at least 2 iters, got %d', res_conv.Iterations);
+
+% Verify the stopping criterion: final relative change < tol
+costs = res_conv.Cost;
+if length(costs) >= 2
+    final_rel = abs(costs(end) - costs(end-1)) / max(abs(costs(end-1)), 1);
+    assert(final_rel < tol_val, ...
+        'Final relative change %.2e should be < tol %.2e', ...
+        final_rel, tol_val);
+end
+fprintf('  Test 23 passed: convergence criterion (%d iters).\n', ...
+    res_conv.Iterations);
+
+%% Test 24: MaxIter limit — stops at exactly MaxIter if not converged
+res_lim = sidLTVdiscIO(Y23, U23, H_23, 'Lambda', 1e4, ...
+    'MaxIter', 3, 'Tolerance', 1e-15);
+
+assert(res_lim.Iterations == 3, ...
+    'Should stop at MaxIter=3, got %d', res_lim.Iterations);
+assert(length(res_lim.Cost) == 3, ...
+    'Cost history should have 3 entries, got %d', length(res_lim.Cost));
+fprintf('  Test 24 passed: MaxIter limit (3 iters).\n');
+
+%% Test 25: Rank-deficient square H forces EM path (SPEC §8.12.3)
+rng(2500);
+n = 3; q = 1; N = 40; L = 3;
+A_true = [0.9 0.1 0; -0.1 0.8 0.05; 0 -0.05 0.7];
+B_true = [0.5; 0.3; 0.2];
+% H is 3x3 but rank 2 — should NOT trigger fast path
+H_rd = [1 0 0; 0 1 0; 1 1 0];  % rank 2
+
+X25 = zeros(N + 1, n, L);
+U25 = randn(N, q, L);
+Y25 = zeros(N + 1, 3, L);
+for l = 1:L
+    X25(1, :, l) = randn(1, n);
+    Y25(1, :, l) = (H_rd * X25(1, :, l)')';
+    for k = 1:N
+        X25(k+1, :, l) = (A_true * X25(k, :, l)' ...
+            + B_true * U25(k, :, l)')';
+        Y25(k+1, :, l) = (H_rd * X25(k+1, :, l)')';
+    end
+end
+
+res_rd = sidLTVdiscIO(Y25, U25, H_rd, 'Lambda', 1e4, 'MaxIter', 10);
+assert(res_rd.Iterations > 0, ...
+    'Rank-deficient square H should use EM, got 0 iters');
+fprintf('  Test 25 passed: rank-deficient square H forces EM (%d iters).\n', ...
+    res_rd.Iterations);
+
 fprintf('test_sidLTVdiscIO: all tests passed.\n');

@@ -340,4 +340,57 @@ eig_err = max(abs(sort(abs(eig(A0))) - sort(abs(eig(A_true)))));
 assert(eig_err < 0.15, 'Cell trimmed: eig error %.4f', eig_err);
 fprintf('  Test 11 passed: cell with trimming (eig_err=%.4f).\n', eig_err);
 
+%% Test 12: H-basis constraint — Markov params match H * A^k * B (SPEC §8.13.1)
+% The realization should satisfy: H * A0^{k-1} * B0 = g(k) for the true
+% Markov parameters. Test by checking first few impulse response steps.
+rng(1200);
+n = 2; q = 1; N = 1000;
+A_true = [0.8 0.2; -0.1 0.7];
+B_true = [1; 0.5];
+H12 = [1 0.5; 0 1];  % non-trivial py=2, n=2
+
+u = randn(N, q);
+x = zeros(N + 1, n);
+x(1, :) = randn(1, n);
+for k = 1:N
+    x(k+1, :) = (A_true * x(k, :)' + B_true * u(k, :)')';
+end
+Y12 = x * H12';
+
+[A0, B0] = sidLTIfreqIO(Y12, u, H12);
+
+% Check first 5 Markov parameters: H * A0^{k-1} * B0
+Ak = eye(n);
+for k = 1:5
+    g_est  = H12 * Ak * B0;
+    g_true = H12 * (A_true^(k-1)) * B_true;
+    mp_err = norm(g_est - g_true) / max(norm(g_true), eps);
+    assert(mp_err < 0.25, ...
+        'Markov param k=%d error %.4f', k, mp_err);
+    Ak = Ak * A0;
+end
+fprintf('  Test 12 passed: H-basis Markov parameters match.\n');
+
+%% Test 13: Default Horizon selection (SPEC §8.13.2)
+% Default horizon: min(floor(N_imp/3), 50)
+rng(1300);
+n = 2; q = 1; N = 300;
+A_true = [0.9 0.1; -0.1 0.8];
+B_true = [0.5; 0.3];
+H13 = eye(n);
+
+u = randn(N, q);
+x = zeros(N + 1, n);
+x(1, :) = randn(1, n);
+for k = 1:N
+    x(k+1, :) = (A_true * x(k, :)' + B_true * u(k, :)')';
+end
+Y13 = x * H13';
+
+% Just verify it works with defaults (no 'Horizon' specified)
+[A0_def, B0_def] = sidLTIfreqIO(Y13, u, H13);
+assert(all(isfinite(A0_def(:))), 'Default horizon should produce finite A0');
+assert(all(isfinite(B0_def(:))), 'Default horizon should produce finite B0');
+fprintf('  Test 13 passed: default horizon produces valid output.\n');
+
 fprintf('test_sidLTIfreqIO: all tests passed.\n');

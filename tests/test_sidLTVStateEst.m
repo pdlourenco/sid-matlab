@@ -289,4 +289,67 @@ for l = 1:L
 end
 fprintf('  Test 9 passed: variable-length cell input.\n');
 
+%% Test 10: Non-trivial Q weighting (SPEC §8.12.13)
+% Q scales process noise covariance. Large Q = low trust in dynamics.
+% With Q >> I, smoother should rely more on measurements.
+rng(1000);
+n = 2; q = 1; N = 50;
+A_true = [0.9 0.1; -0.1 0.8];
+B_true = [0.5; 0.3];
+H10 = eye(n);
+
+U10 = randn(N, q);
+X10 = zeros(N + 1, n);
+X10(1, :) = randn(1, n);
+for k = 1:N
+    X10(k+1, :) = (A_true * X10(k, :)' + B_true * U10(k, :)')';
+end
+Y10 = X10 + 0.5 * randn(N + 1, n);  % noisy measurements
+
+A10 = repmat(A_true, [1 1 N]);
+B10 = repmat(B_true, [1 1 N]);
+
+% Large Q: don't trust dynamics → follow measurements more
+X_largeQ = sidLTVStateEst(Y10, U10, A10, B10, H10, ...
+    'Q', 100 * eye(n));
+% Small Q: trust dynamics → smoother output
+X_smallQ = sidLTVStateEst(Y10, U10, A10, B10, H10, ...
+    'Q', 0.01 * eye(n));
+
+% Large Q should be closer to raw measurements
+err_largeQ = norm(X_largeQ(:) - Y10(:)) / norm(Y10(:));
+err_smallQ = norm(X_smallQ(:) - Y10(:)) / norm(Y10(:));
+assert(err_largeQ < err_smallQ, ...
+    'Large Q (%.4f) should track measurements closer than small Q (%.4f)', ...
+    err_largeQ, err_smallQ);
+fprintf('  Test 10 passed: Q weighting effect (large=%.4f, small=%.4f).\n', ...
+    err_largeQ, err_smallQ);
+
+%% Test 11: Default R=I, Q=I matches explicit (SPEC §8.12.13)
+rng(1100);
+n = 2; q = 1; N = 30;
+A_true = [0.9 0.1; -0.1 0.8];
+B_true = [0.5; 0.3];
+H11 = [1 0];
+
+U11 = randn(N, q);
+X11 = zeros(N + 1, n);
+X11(1, :) = randn(1, n);
+for k = 1:N
+    X11(k+1, :) = (A_true * X11(k, :)' + B_true * U11(k, :)')';
+end
+Y11 = X11 * H11';
+
+A11 = repmat(A_true, [1 1 N]);
+B11 = repmat(B_true, [1 1 N]);
+
+X_default = sidLTVStateEst(Y11, U11, A11, B11, H11);
+X_explicit = sidLTVStateEst(Y11, U11, A11, B11, H11, ...
+    'R', eye(1), 'Q', eye(n));
+
+errD = norm(X_default(:) - X_explicit(:));
+assert(errD < 1e-12, ...
+    'Default R=I,Q=I should match explicit: %.2e', errD);
+fprintf('  Test 11 passed: default params match explicit.\n');
+
 fprintf('test_sidLTVStateEst: all tests passed.\n');
