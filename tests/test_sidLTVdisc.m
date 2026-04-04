@@ -321,4 +321,46 @@ assert(r_low.Cost(2) <= r_high.Cost(2) * 1.01, ...
     r_low.Cost(2), r_high.Cost(2));
 fprintf('  Test 16 passed: low vs high lambda variation.\n');
 
+%% Test 17: Preconditioning flag and output validity (SPEC §8.4)
+rng(1700);
+p = 2; q = 1; N = 30; L = 5;
+A_true = [0.9 0.1; -0.1 0.8];
+B_true = [0.5; 0.3];
+X = zeros(N+1, p, L);
+U = randn(N, q, L);
+for l = 1:L
+    X(1, :, l) = randn(1, p);
+    for k = 1:N
+        X(k+1, :, l) = (A_true * X(k, :, l)' + B_true * U(k, :, l)')' ...
+            + 0.05 * randn(1, p);
+    end
+end
+
+r_nopre = sidLTVdisc(X, U, 'Lambda', 1e4, 'Precondition', false);
+r_pre   = sidLTVdisc(X, U, 'Lambda', 1e4, 'Precondition', true);
+
+% Preconditioning flag should be recorded
+assert(r_nopre.Preconditioned == false, 'Should report Preconditioned=false');
+assert(r_pre.Preconditioned == true, 'Should report Preconditioned=true');
+
+% Both should produce valid finite output
+assert(all(isfinite(r_pre.A(:))), 'Precond A should be finite');
+assert(all(isfinite(r_pre.B(:))), 'Precond B should be finite');
+
+% Cost decomposition should still hold for preconditioned result
+assert(abs(r_pre.Cost(1) - (r_pre.Cost(2) + r_pre.Cost(3))) < 1e-8, ...
+    'Precond cost decomposition should hold');
+fprintf('  Test 17 passed: preconditioning flags and output validity.\n');
+
+%% Test 18: Uncertainty fields present when requested (SPEC §8.9)
+r_unc = sidLTVdisc(X, U, 'Lambda', 1e3, 'Uncertainty', true);
+assert(isfield(r_unc, 'AStd'), 'Should have AStd field');
+assert(isfield(r_unc, 'BStd'), 'Should have BStd field');
+assert(isfield(r_unc, 'P'), 'Should have P field');
+assert(isequal(size(r_unc.AStd), [p, p, N]), 'AStd should be (p x p x N)');
+assert(isequal(size(r_unc.BStd), [p, q, N]), 'BStd should be (p x q x N)');
+assert(all(r_unc.AStd(:) >= 0), 'AStd should be non-negative');
+assert(all(r_unc.BStd(:) >= 0), 'BStd should be non-negative');
+fprintf('  Test 18 passed: uncertainty fields present and valid.\n');
+
 fprintf('test_sidLTVdisc: ALL TESTS PASSED\n');
