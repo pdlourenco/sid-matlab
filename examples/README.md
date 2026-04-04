@@ -15,6 +15,8 @@ Runnable scripts demonstrating the full functionality of the sid toolbox. Each e
 | [`exampleFreqMap`](exampleFreqMap.m) | Time-varying frequency response maps | `sidFreqMap`, `sidMapPlot` |
 | [`exampleSpectrogram`](exampleSpectrogram.m) | Short-time FFT spectrogram | `sidSpectrogram`, `sidSpectrogramPlot` |
 | [`exampleLTVdisc`](exampleLTVdisc.m) | LTV state-space identification | `sidLTVdisc`, `sidLTVdiscTune`, `sidLTVdiscFrozen` |
+| [`exampleMultiTrajectory`](exampleMultiTrajectory.m) | Multi-trajectory ensemble averaging | `sidFreqBT`, `sidFreqMap`, `sidSpectrogram`, `sidLTVdisc` |
+| [`exampleOutputCOSMIC`](exampleOutputCOSMIC.m) | LTV identification from partial observations | `sidFreqBT`, `sidModelOrder`, `sidLTVdiscIO` |
 
 ## Descriptions
 
@@ -53,6 +55,14 @@ Demonstrates `sidSpectrogram` for time-frequency analysis of signals. Generates 
 ### exampleLTVdisc
 
 Comprehensive demonstration of `sidLTVdisc` (COSMIC algorithm) for identifying time-varying state-space models `x(k+1) = A(k)x(k) + B(k)u(k)`. Covers LTI system recovery, LTV identification with a ramping pole, automatic vs manual regularization (`'Lambda'`), multi-trajectory benefits, and validation-based tuning via `sidLTVdiscTune`. Also demonstrates Bayesian uncertainty quantification (`'Uncertainty', true`) with confidence bands on recovered parameters, and frozen transfer function computation via `sidLTVdiscFrozen` with propagated uncertainty.
+
+### exampleMultiTrajectory
+
+Demonstrates how multiple independent trajectories improve estimation quality through ensemble averaging. Generates L=10 trajectories of a second-order system to show variance reduction (~1/sqrt(L)) in `sidFreqBT` confidence bands. Also shows multi-trajectory benefits for time-varying frequency maps (`sidFreqMap`), spectrograms (`sidSpectrogram`), and LTV state-space identification (`sidLTVdisc`).
+
+### exampleOutputCOSMIC
+
+End-to-end workflow for identifying time-varying systems from partial observations using Output-COSMIC (`sidLTVdiscIO`). Starts with a 4th-order system where only 2 of 4 states are measured. Demonstrates the complete pipeline: frequency response estimation (`sidFreqBT`), model order determination via Hankel SVD (`sidModelOrder`), observation matrix construction, and LTV identification with alternating minimisation. Plots recovered dynamics, estimated vs true states (both observed and hidden), and convergence history.
 
 ## Running All Examples
 
