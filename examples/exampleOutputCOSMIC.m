@@ -124,6 +124,31 @@ ylabel('Cost J');
 title('Output-COSMIC: Convergence');
 grid on;
 
+%% Model validation with sidCompare and sidResidual
+% Validate the identified model using the estimated states as reference.
+
+comp = sidCompare(result, result.X, U);
+fprintf('\nModel fit (per state component):\n');
+for ch = 1:n
+    fprintf('  x_%d: %.1f%%\n', ch, comp.Fit(ch));
+end
+
+% Residual diagnostics on estimated states
+resid = sidResidual(result, result.X, U);
+if resid.WhitenessPass
+    fprintf('Residual whiteness test: PASS\n');
+else
+    fprintf('Residual whiteness test: FAIL (model may need refinement)\n');
+end
+
+% Observation-space check: H * X_hat should approximate Y
+Y_recon = zeros(N+1, py, L);
+for l = 1:L
+    Y_recon(:, :, l) = result.X(:, :, l) * H_use';
+end
+obs_err = norm(Y_recon(:) - Y(:)) / norm(Y(:));
+fprintf('Observation reconstruction error: %.4f\n', obs_err);
+
 %% Frozen transfer function (if available)
 % Compute the frozen transfer function at the midpoint and plot.
 midResult = struct();
