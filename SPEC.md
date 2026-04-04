@@ -1,7 +1,7 @@
 # sid — Algorithm Specification
 
-**Version:** 0.6.0-draft
-**Date:** 2026-03-31
+**Version:** 1.0.0
+**Date:** 2026-04-04
 **Reference:** Ljung, L. *System Identification: Theory for the User*, 2nd ed., Prentice Hall, 1999.
 
 ---
