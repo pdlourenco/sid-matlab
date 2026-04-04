@@ -103,4 +103,48 @@ x = 5 * (0:N-1)' + randn(N, 1);
 assert(max(abs(x - (x_dt + trend))) < 1e-12, 'x = x_dt + trend exactly');
 fprintf('  Test 8 passed: trend output reconstruction.\n');
 
+%% Test 9: High polynomial degree (Order=5)
+rng(5009);
+N = 200;
+t = linspace(0, 1, N)';
+% Generate a 5th-degree polynomial trend
+trend_true = 3*t.^5 - 2*t.^4 + t.^3 - 0.5*t.^2 + 0.1*t + 7;
+x = trend_true + 0.001 * randn(N, 1);
+
+[x_dt, trend_est] = sidDetrend(x, 'Order', 5);
+assert(max(abs(trend_est - trend_true)) < 0.1, ...
+    'Order-5 trend should be well recovered');
+assert(max(abs(x - (x_dt + trend_est))) < 1e-12, ...
+    'Reconstruction must hold');
+fprintf('  Test 9 passed: high polynomial degree (Order=5).\n');
+
+%% Test 10: Order >= N clamped gracefully
+rng(5010);
+N = 5;
+x = randn(N, 1);
+
+% Order=10 > N=5, should be clamped to N-1=4 internally
+[x_dt, trend] = sidDetrend(x, 'Order', 10);
+assert(isequal(size(x_dt), [N, 1]), 'Output size should be N x 1');
+% With degree clamped to N-1, the polynomial fits the data perfectly
+% so detrended should be near zero
+assert(max(abs(x_dt)) < 1e-8, ...
+    'Order >= N should fit data perfectly, detrended near zero');
+fprintf('  Test 10 passed: Order >= N clamped gracefully.\n');
+
+%% Test 11: Segment length not dividing N evenly
+rng(5011);
+N = 100;
+t = (0:N-1)';
+x = 2 * t + randn(N, 1);
+
+[x_dt, trend] = sidDetrend(x, 'SegmentLength', 30);
+% N=100, SegLen=30: segments [1-30],[31-60],[61-90],[91-100]
+assert(isequal(size(x_dt), [N, 1]), 'Output size correct');
+assert(max(abs(x - (x_dt + trend))) < 1e-12, 'Reconstruction holds');
+% Last segment (10 samples) should still be detrended
+assert(abs(mean(x_dt(91:100))) < 5, ...
+    'Last short segment should be detrended');
+fprintf('  Test 11 passed: segment length not dividing N.\n');
+
 fprintf('  test_sidDetrend: ALL PASSED\n');
