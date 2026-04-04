@@ -19,7 +19,7 @@ import sys
 # ---------------------------------------------------------------------------
 
 # Directories to scan (relative to repo root)
-SCAN_DIRS = [".", "internal"]
+SCAN_DIRS = ["matlab/sid", "matlab/sid/internal"]
 
 # Files exempt from SPECIFICATION check
 SPEC_EXEMPT = {"sidInstall.m"}
