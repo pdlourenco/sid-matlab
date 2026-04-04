@@ -363,4 +363,52 @@ assert(all(r_unc.AStd(:) >= 0), 'AStd should be non-negative');
 assert(all(r_unc.BStd(:) >= 0), 'BStd should be non-negative');
 fprintf('  Test 18 passed: uncertainty fields present and valid.\n');
 
+%% Test 19: NaN in input data rejected (SPEC §8.4)
+rng(1900);
+p = 2; q = 1; N = 20;
+X_nan = randn(N+1, p);
+U_nan = randn(N, q);
+X_nan(5, 1) = NaN;
+passed = false;
+try
+    sidLTVdisc(X_nan, U_nan, 'Lambda', 1e3);
+catch e
+    if ~isempty(strfind(e.identifier, 'sid:'))
+        passed = true;
+    end
+end
+assert(passed, 'NaN in X should raise error');
+
+% Inf in U
+U_inf = randn(N, q);
+U_inf(3) = Inf;
+X_ok = randn(N+1, p);
+passed = false;
+try
+    sidLTVdisc(X_ok, U_inf, 'Lambda', 1e3);
+catch e
+    if ~isempty(strfind(e.identifier, 'sid:'))
+        passed = true;
+    end
+end
+assert(passed, 'Inf in U should raise error');
+fprintf('  Test 19 passed: NaN/Inf in data rejected.\n');
+
+%% Test 20: Very short data (N=2, minimum viable)
+rng(2000);
+p = 2; q = 1; N = 2; L = 3;
+A_true = [0.9 0.1; -0.1 0.8]; B_true = [0.5; 0.3];
+X = zeros(N+1, p, L); U = randn(N, q, L);
+for l = 1:L
+    X(1, :, l) = randn(1, p);
+    for k = 1:N
+        X(k+1, :, l) = (A_true * X(k, :, l)' + B_true * U(k, :, l)')';
+    end
+end
+
+result_short = sidLTVdisc(X, U, 'Lambda', 1e3);
+assert(result_short.DataLength == 2, 'DataLength should be 2');
+assert(isequal(size(result_short.A), [p, p, N]), 'A should be (p x p x 2)');
+fprintf('  Test 20 passed: N=2 minimum viable data.\n');
+
 fprintf('test_sidLTVdisc: ALL TESTS PASSED\n');

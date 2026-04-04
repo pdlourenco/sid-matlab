@@ -143,4 +143,30 @@ assert(err_mt < err_st, ...
 fprintf('  Test 14 passed: multi-trajectory (L=%d, ratio=%.3f).\n', ...
     L14, ratio);
 
+%% Test 15: WindowSize M < 2 should error (SPEC §2.2)
+rng(15);
+N = 100;
+u = randn(N, 1);
+y = filter(1, [1 -0.5], u);
+passed = false;
+try
+    sidFreqBT(y, u, 'WindowSize', 1);
+catch e
+    if ~isempty(strfind(e.identifier, 'sid:'))
+        passed = true;
+    end
+end
+assert(passed, 'WindowSize=1 should raise an error');
+fprintf('  Test 15 passed: M < 2 rejected.\n');
+
+%% Test 16: Near-zero input — should not crash
+rng(16);
+N = 500;
+u = 1e-15 * randn(N, 1);  % near-zero input
+y = randn(N, 1);
+result = sidFreqBT(y, u, 'WindowSize', 20);
+% Response may be huge/NaN but should not crash
+assert(isfield(result, 'Response'), 'Should return a result struct');
+fprintf('  Test 16 passed: near-zero input handled.\n');
+
 fprintf('  test_sidFreqBT: ALL PASSED\n');

@@ -174,4 +174,37 @@ end
 fprintf('  Test 9 passed: per-channel NRMSE (%.1f%%, %.1f%%).\n', ...
     comp_m.Fit(1), comp_m.Fit(2));
 
+%% Test 10: InitialState parameter (SPEC §15.4)
+rng(7010);
+p = 2; q = 1; N = 50; L = 1;
+A_true = [0.9 0.1; -0.05 0.8]; B_true = [0.5; 0.3];
+x0_true = [3; -2];  % known initial state
+
+X = zeros(N+1, p);
+U = randn(N, q);
+X(1, :) = x0_true';
+for k = 1:N
+    X(k+1, :) = (A_true * X(k, :)' + B_true * U(k, :)')';
+end
+
+model.A = repmat(A_true, [1 1 N]);
+model.B = repmat(B_true, [1 1 N]);
+model.DataLength = N;
+model.StateDim = p;
+model.InputDim = q;
+model.Method = 'sidLTVdisc';
+
+% With correct initial state
+comp_x0 = sidCompare(model, X, U, 'InitialState', x0_true);
+assert(all(comp_x0.Fit > 99), ...
+    'Correct x0 should give >99%% fit, got %.1f%%', min(comp_x0.Fit));
+
+% With wrong initial state
+comp_bad = sidCompare(model, X, U, 'InitialState', [0; 0]);
+% Wrong x0 should give worse fit (transient error)
+assert(all(comp_bad.Fit < comp_x0.Fit), ...
+    'Wrong x0 should give worse fit');
+fprintf('  Test 10 passed: InitialState parameter (%.1f%% vs %.1f%%).\n', ...
+    min(comp_x0.Fit), min(comp_bad.Fit));
+
 fprintf('  test_sidCompare: ALL PASSED\n');

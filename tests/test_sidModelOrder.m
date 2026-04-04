@@ -219,4 +219,44 @@ assert(n_thr == manual_n, ...
     n_thr, manual_n);
 fprintf('  Test 12 passed: threshold method (n=%d).\n', n_thr);
 
+%% Test 13: White noise — no system, should return small n
+rng(1300);
+N = 2000;
+u = randn(N, 1);
+y = randn(N, 1);  % pure white noise, no relation to u
+
+G_wn = sidFreqBT(y, u, 'WindowSize', 60);
+[n_wn, info_wn] = sidModelOrder(G_wn);
+
+% With no system, singular values should decay slowly (no clear gap)
+% n can vary but should be well below the Hankel dimension
+sv_wn = info_wn.SingularValues;
+nSV = length(sv_wn);
+assert(n_wn < nSV, ...
+    'White noise: n=%d should be less than Hankel dim %d', n_wn, nSV);
+fprintf('  Test 13 passed: white noise gives n=%d (Hankel dim=%d).\n', ...
+    n_wn, nSV);
+
+%% Test 14: Threshold tuning — different thresholds give different n
+rng(1400);
+N = 3000;
+u = randn(N, 1);
+a1 = -1.5; a2 = 0.7; b1 = 1;
+y = zeros(N, 1);
+for k = 3:N
+    y(k) = -a1 * y(k-1) - a2 * y(k-2) + b1 * u(k-1) + 0.01 * randn;
+end
+G_th = sidFreqBT(y, u, 'WindowSize', 80);
+
+% Strict threshold → smaller n
+[n_strict, ~] = sidModelOrder(G_th, 'Threshold', 0.5);
+% Loose threshold → larger n
+[n_loose, ~] = sidModelOrder(G_th, 'Threshold', 0.001);
+
+assert(n_strict <= n_loose, ...
+    'Strict threshold n=%d should be <= loose n=%d', n_strict, n_loose);
+assert(n_strict >= 1, 'Strict threshold should give at least n=1');
+fprintf('  Test 14 passed: threshold tuning (strict=%d, loose=%d).\n', ...
+    n_strict, n_loose);
+
 fprintf('test_sidModelOrder: all tests passed.\n');
