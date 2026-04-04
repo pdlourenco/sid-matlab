@@ -2,16 +2,20 @@ name: Lint
 
 on:
   push:
+    paths:
+      - 'matlab/**'
+      - 'miss_hit.cfg'
+      - '.github/scripts/**'
     paths-ignore:
       - '**/*.md'
-      - 'docs/**'
-      - 'LICENSE'
   pull_request:
     branches: [main]
+    paths:
+      - 'matlab/**'
+      - 'miss_hit.cfg'
+      - '.github/scripts/**'
     paths-ignore:
       - '**/*.md'
-      - 'docs/**'
-      - 'LICENSE'
 
 jobs:
   miss-hit:
@@ -31,13 +35,13 @@ jobs:
         run: pip install miss-hit
 
       - name: Code quality (mh_lint)
-        run: mh_lint .
+        run: mh_lint matlab/
 
       - name: Style check (mh_style)
-        run: mh_style .
+        run: mh_style matlab/
 
       - name: Metrics check (mh_metric)
-        run: mh_metric --ci .
+        run: mh_metric --ci matlab/
 
       - name: Function header standard
         run: python .github/scripts/check_headers.py

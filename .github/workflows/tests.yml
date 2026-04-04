@@ -2,16 +2,20 @@ name: Tests
 
 on:
   push:
+    paths:
+      - 'matlab/**'
+      - 'spec/**'
+      - 'testdata/**'
     paths-ignore:
       - '**/*.md'
-      - 'docs/**'
-      - 'LICENSE'
   pull_request:
     branches: [main]
+    paths:
+      - 'matlab/**'
+      - 'spec/**'
+      - 'testdata/**'
     paths-ignore:
       - '**/*.md'
-      - 'docs/**'
-      - 'LICENSE'
 
 jobs:
   octave:
@@ -28,10 +32,10 @@ jobs:
           sudo apt-get install -y octave xvfb
 
       - name: Run test suite
-        run: xvfb-run octave --no-gui --eval "run('tests/runAllTests.m')"
+        run: xvfb-run octave --no-gui --eval "run('matlab/tests/runAllTests.m')"
 
       - name: Run examples
-        run: xvfb-run octave --no-gui --eval "run('examples/runAllExamples.m')"
+        run: xvfb-run octave --no-gui --eval "run('matlab/examples/runAllExamples.m')"
 
   matlab:
     name: MATLAB tests & examples
@@ -55,9 +59,9 @@ jobs:
       - name: Run test suite
         uses: matlab-actions/run-command@v2.4.1
         with:
-          command: run('tests/runAllTests.m')
+          command: run('matlab/tests/runAllTests.m')
 
       - name: Run examples
         uses: matlab-actions/run-command@v2.4.1
         with:
-          command: run('examples/runAllExamples.m')
+          command: run('matlab/examples/runAllExamples.m')

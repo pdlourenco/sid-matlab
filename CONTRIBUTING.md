@@ -1,7 +1,7 @@
 # Contributing to sid-matlab
 
 Contributions are welcome via issues and pull requests. Please ensure that
-`tests/runAllTests.m` passes on both MATLAB and Octave before submitting —
+`matlab/tests/runAllTests.m` passes on both MATLAB and Octave before submitting —
 the CI pipeline checks both platforms automatically.
 
 ---
@@ -140,7 +140,7 @@ sid [Domain] [Method/Variant]
 
 Examples: `sidFreqBT`, `sidLTVdisc`, `sidBodePlot`, `sidModelOrder`.
 
-Internal helper functions live in the `internal/` directory and use the same
+Internal helper functions live in the `matlab/sid/internal/` directory and use the same
 `sid` prefix with camelCase (e.g., `sidCov`, `sidValidateData`,
 `sidLTVcosmicSolve`).
 
@@ -226,8 +226,8 @@ k = k + 1;
 
 ## Testing
 
-- All tests: `tests/runAllTests.m`
-- All examples: `examples/runAllExamples.m`
+- All tests: `matlab/tests/runAllTests.m`
+- All examples: `matlab/examples/runAllExamples.m`
 - Both must pass on **MATLAB R2016b+** and **GNU Octave 8.0+**
 - CI runs lint (`miss_hit`) and tests on both platforms automatically
 
@@ -235,6 +235,6 @@ k = k + 1;
 
 ## Example and Test Scripts
 
-Example scripts (`examples/`) and test scripts (`tests/`) use `%%` section
+Example scripts (`matlab/examples/`) and test scripts (`matlab/tests/`) use `%%` section
 markers and do not require the full function header template. They should
 have a brief `%%` title and description at the top.

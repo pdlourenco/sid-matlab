@@ -5,7 +5,7 @@
 ![MATLAB R2016b+](https://img.shields.io/badge/MATLAB-R2016b%2B-orange.svg)
 ![GNU Octave 8+](https://img.shields.io/badge/GNU_Octave-8%2B-blue.svg)
 
-[![Open in MATLAB Online](https://www.mathworks.com/images/responsive/global/open-in-matlab-online.svg)](https://matlab.mathworks.com/open/github/v1?repo=pdlourenco/sid-matlab&file=examples/exampleSISO.m)
+[![Open in MATLAB Online](https://www.mathworks.com/images/responsive/global/open-in-matlab-online.svg)](https://matlab.mathworks.com/open/github/v1?repo=pdlourenco/sid-matlab&file=matlab/examples/exampleSISO.m)
 
 **sid** is a free, open-source toolbox for **system identification** — covering both **non-parametric frequency response estimation** and **time-varying state-space identification** — implemented in pure MATLAB/Octave code with **zero toolbox dependencies**. It provides drop-in replacements for `spa`, `spafdr`, and `etfe` that you can use without a licence, and implements the **COSMIC** (**C**losed-form **O**ptimal data-driven linear time-varying **S**yste**M** **I**dentifi**C**ation) algorithm for identifying linear time-varying (LTV) state-space models from data.
 
@@ -51,7 +51,7 @@ sid is designed from the ground up to run on **GNU Octave** as a first-class tar
 
 **State-space path.** The **COSMIC algorithm** (Carvalho et al., 2022) identifies discrete-time LTV models x(k+1) = A(k)x(k) + B(k)u(k) by solving a block-tridiagonal regularized least-squares problem in O(N) time. Multiple trajectories — including variable-length sequences — are pooled into the data matrices. When only outputs are observed, **Output-COSMIC** alternates between state estimation (RTS smoother) and dynamics identification, converging to a joint optimum. Bayesian uncertainty quantification propagates through to frozen transfer functions G(w,k) for direct comparison with non-parametric frequency estimates.
 
-See [SPEC.md](SPEC.md) for the full mathematical derivation.
+See [SPEC.md](spec/SPEC.md) for the full mathematical derivation.
 
 ## Function Comparison
 
@@ -112,7 +112,7 @@ git clone https://github.com/pdlourenco/sid-matlab.git
 Then add it to your MATLAB or Octave path:
 
 ```matlab
-run('/path/to/sid-matlab/sidInstall.m')
+run('/path/to/sid/matlab/sid/sidInstall.m')
 ```
 
 To make the path persistent across sessions, add the line above to your [`startup.m`](https://www.mathworks.com/help/matlab/ref/startup.html) file (or [`.octaverc`](https://docs.octave.org/latest/Startup-Files.html) for Octave). No `pkg install` is needed — sid is a plain directory of `.m` files that works on both platforms.
@@ -140,7 +140,7 @@ result_ts = sidFreqBT(y, []);
 sidSpectrumPlot(result_ts);
 ```
 
-See the [examples guide](examples/README.md) for more usage patterns, including ETFE, frequency-dependent resolution, MIMO, time-varying maps, spectrograms, LTV state-space identification, multi-trajectory ensemble averaging, and partial-observation Output-COSMIC.
+See the [examples guide](matlab/examples/README.md) for more usage patterns, including ETFE, frequency-dependent resolution, MIMO, time-varying maps, spectrograms, LTV state-space identification, multi-trajectory ensemble averaging, and partial-observation Output-COSMIC.
 
 ## Compatibility
 
@@ -153,14 +153,15 @@ No toolboxes are required. The entire codebase uses only core MATLAB/Octave func
 
 ## Documentation
 
-- [**SPEC.md**](SPEC.md) — Full algorithm specification with mathematical derivations
-- [**Roadmap**](docs/sid_matlab_roadmap.md) — Development phases and planned features
-- [**COSMIC uncertainty derivation**](docs/cosmic_uncertainty_derivation.md) — Bayesian posterior covariance for LTV identification
-- [**COSMIC online recursion**](docs/cosmic_online_recursion.md) — Recursive/streaming formulation of the COSMIC algorithm
-- [**COSMIC automatic tuning**](docs/cosmic_automatic_tuning.md) — Regularization parameter selection via validation and L-curve
-- [**Output-COSMIC**](docs/cosmic_output.md) — LTV identification from partial (output-only) observations
+- [**SPEC.md**](spec/SPEC.md) — Full algorithm specification with mathematical derivations
+- [**Roadmap**](docs/roadmap.md) — Development phases and planned features
+- [**COSMIC uncertainty derivation**](spec/cosmic/uncertainty_derivation.md) — Bayesian posterior covariance for LTV identification
+- [**COSMIC online recursion**](spec/cosmic/online_recursion.md) — Recursive/streaming formulation of the COSMIC algorithm
+- [**COSMIC automatic tuning**](spec/cosmic/automatic_tuning.md) — Regularization parameter selection via validation and L-curve
+- [**Output-COSMIC**](spec/cosmic/output.md) — LTV identification from partial (output-only) observations
+- [**Multi-trajectory spectral theory**](spec/multi_trajectory_spectral_theory.md) — Ensemble averaging for frequency-domain estimation
 - [**Multi-trajectory spectral theory**](docs/multi_trajectory_spectral_theory.md) — Averaging frequency estimates across repeated experiments
-- [**Examples**](examples/README.md) — Runnable scripts demonstrating typical workflows
+- [**Examples**](matlab/examples/README.md) — Runnable scripts demonstrating typical workflows
 
 ## References
 
@@ -171,7 +172,7 @@ No toolboxes are required. The entire codebase uses only core MATLAB/Octave func
 
 ## Contributing
 
-Contributions are welcome via issues and pull requests. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on function headers, code style, and testing. Please ensure that `tests/runAllTests.m` passes on both MATLAB and Octave before submitting.
+Contributions are welcome via issues and pull requests. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on function headers, code style, and testing. Please ensure that `matlab/tests/runAllTests.m` passes on both MATLAB and Octave before submitting.
 
 ## License
 
