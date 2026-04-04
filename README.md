@@ -140,7 +140,7 @@ result_ts = sidFreqBT(y, []);
 sidSpectrumPlot(result_ts);
 ```
 
-See the [examples guide](examples/README.md) for more usage patterns, including ETFE, frequency-dependent resolution, MIMO, time-varying maps, spectrograms, and LTV state-space identification.
+See the [examples guide](examples/README.md) for more usage patterns, including ETFE, frequency-dependent resolution, MIMO, time-varying maps, spectrograms, LTV state-space identification, multi-trajectory ensemble averaging, and partial-observation Output-COSMIC.
 
 ## Compatibility
 
