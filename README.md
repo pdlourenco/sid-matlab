@@ -27,11 +27,25 @@ consistency.
 
 | Language | Status | Directory | Requirements |
 |----------|--------|-----------|--------------|
-| MATLAB/Octave | Stable | [`matlab/`](matlab/) | MATLAB R2016b+ or GNU Octave 8.0+ |
-| Python | Planned | [`python/`](python/) | TBD |
-| Julia | Planned | [`julia/`](julia/) | TBD |
+| MATLAB/Octave | Stable | [`matlab/`](matlab/README.md) | MATLAB R2016b+ or GNU Octave 8.0+ |
+| Python | Planned | [`python/`](python/README.md) | TBD |
+| Julia | Planned | [`julia/`](julia/README.md) | TBD |
 
 See each language's README for installation, quick start, function reference, and compatibility details.
+
+<details>
+<summary><strong>Tip:</strong> Only need one language? Use a sparse checkout.</summary>
+
+```bash
+git clone --no-checkout https://github.com/pdlourenco/sid-matlab.git sid
+cd sid
+git sparse-checkout init --cone
+git sparse-checkout set spec testdata matlab   # replace 'matlab' with your language
+git checkout
+```
+
+This downloads only the shared specification, test data, and your chosen implementation.
+</details>
 
 ## How It Works
 
@@ -49,7 +63,9 @@ See [SPEC.md](spec/SPEC.md) for the full mathematical derivation.
 - [**COSMIC online recursion**](spec/cosmic/online_recursion.md) — Recursive/streaming formulation of the COSMIC algorithm
 - [**COSMIC automatic tuning**](spec/cosmic/automatic_tuning.md) — Regularization parameter selection via validation and L-curve
 - [**Output-COSMIC**](spec/cosmic/output.md) — LTV identification from partial (output-only) observations
-- [**Multi-trajectory spectral theory**](spec/multi_trajectory_spectral_theory.md) — Ensemble averaging for frequency-domain estimation
+- **Multi-trajectory spectral theory** — Ensemble averaging for frequency-domain estimation (covered in [SPEC.md](spec/SPEC.md) §2, §4.1, §6)
+- [**v1.0 checklist**](docs/TODO.md) — Completion checklist for the v1.0 release
+- [**Test data format**](testdata/README.md) — Cross-language reference test vectors
 
 ## References
 

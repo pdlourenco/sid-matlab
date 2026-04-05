@@ -9,7 +9,7 @@ mathematical specification:
 
 - [`spec/`](spec/) — Algorithm specification and mathematical derivations
   (single source of truth for all implementations)
-- [`testdata/`](testdata/) — Cross-language reference test vectors (JSON)
+- [`testdata/`](testdata/README.md) — Cross-language reference test vectors (JSON)
 - [`matlab/`](matlab/) — MATLAB/Octave implementation (stable)
 - [`python/`](python/) — Python implementation (planned)
 - [`julia/`](julia/) — Julia implementation (planned)
@@ -18,7 +18,7 @@ mathematical specification:
 
 - All implementations follow the algorithms defined in [`spec/SPEC.md`](spec/SPEC.md).
   When in doubt, the spec is authoritative.
-- Cross-language test vectors in [`testdata/`](testdata/) ensure numerical
+- Cross-language test vectors in [`testdata/`](testdata/README.md) ensure numerical
   consistency across implementations. New algorithms should include reference
   vectors.
 - The project is MIT-licensed. See [`LICENSE`](LICENSE).
