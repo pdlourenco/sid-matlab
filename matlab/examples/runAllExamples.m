@@ -1,33 +1,36 @@
 %% runAllExamples - Run all examples and report pass/fail summary
 %
-% Validates that every example script runs without error. Designed for
-% headless CI execution (all figures are closed after each example).
+% Discovers and runs all example*.m scripts in this directory, then reports
+% a pass/fail summary. Designed for headless CI execution (all figures are
+% closed after each example). New examples are picked up automatically —
+% no manifest to edit.
 %
 % Usage:
 %   run('matlab/examples/runAllExamples.m')
 
 fprintf('=== sid-matlab Examples ===\n\n');
 
-% Add paths
+% Add paths — resolve this script's directory robustly (mfilename may
+% return only the base name when invoked via run() in some environments).
 runner__thisDir = fileparts(mfilename('fullpath'));
+if isempty(runner__thisDir)
+    runner__thisDir = fileparts(which(mfilename));
+end
 runner__matlabDir = fileparts(runner__thisDir);
 runner__sidDir = fullfile(runner__matlabDir, 'sid');
 addpath(runner__sidDir);
 addpath(fullfile(runner__sidDir, 'internal'));
 
-runner__exampleFiles = {
-    'exampleSISO'
-    'exampleETFE'
-    'exampleFreqDepRes'
-    'exampleCoherence'
-    'exampleMethodComparison'
-    'exampleMIMO'
-    'exampleFreqMap'
-    'exampleSpectrogram'
-    'exampleLTVdisc'
-    'exampleMultiTrajectory'
-    'exampleOutputCOSMIC'
-};
+% Auto-discover example files matching example*.m
+runner__listing = dir(fullfile(runner__thisDir, 'example*.m'));
+if isempty(runner__listing)
+    error('sid:noExamples', 'No example*.m files found in %s', runner__thisDir);
+end
+runner__exampleFiles = sort({runner__listing.name});
+% Strip .m extension (2 characters)
+for runner__k = 1:length(runner__exampleFiles)
+    runner__exampleFiles{runner__k} = runner__exampleFiles{runner__k}(1:end-2);
+end
 
 runner__nExamples = length(runner__exampleFiles);
 runner__passed = 0;
