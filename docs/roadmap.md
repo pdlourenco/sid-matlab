@@ -294,11 +294,12 @@ Architecture is decomposed into reusable layers:
 
 - `private/sidLTVblkTriSolve.m`:
   - Generic block tridiagonal forward-backward solver using cell arrays
-  - Supports non-uniform block sizes (needed by initialisation)
-  - Shared by both the initialisation and the state estimation steps
-- `private/sidLTVdiscIOInit.m`:
-  - Initialisation: single forward-backward pass for states `{x_l(k)}` and input matrices `{B(k)}` jointly with `A = I` (exact minimisation of `J|_{A=I}`, jointly convex, composite block tridiagonal per Appendix B)
-  - Uses `sidLTVblkTriSolve` with composite unknowns `w(k) = [x_1(k);...;x_L(k); vec(B(k))]`
+  - Supports non-uniform block sizes
+  - Used by the state estimation step (RTS smoother)
+- `sidLTIfreqIO.m`:
+  - LTI initialisation via Ho-Kalman realization of the I/O transfer function
+  - Estimates constant `(A0, B0)` from `sidFreqBT`, transforms to H-basis, stabilises
+  - Provides observable starting point for the alternating loop
 - `sidLTVStateEst.m`:
   - User-facing batch LTV state estimation (RTS smoother)
   - Given A(k), B(k), H, R, Q, estimates states via block tridiagonal solve (Appendix A)
