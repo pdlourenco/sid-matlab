@@ -84,7 +84,7 @@ sid/
 │   │   ├── sidLTVStateEst.m, sidLTIfreqIO.m, sidModelOrder.m
 │   │   ├── sidBodePlot.m, sidSpectrumPlot.m, sidMapPlot.m, sidSpectrogramPlot.m
 │   │   ├── sidDetrend.m, sidResidual.m, sidCompare.m
-│   │   └── internal/           % Internal helpers
+│   │   └── private/            % Private helper functions
 │   ├── tests/                   % Test suites
 │   │   ├── runAllTests.m
 │   │   └── test_*.m
@@ -292,11 +292,11 @@ Core: alternating minimisation of joint objective (observation fidelity + dynami
 
 Architecture is decomposed into reusable layers:
 
-- `internal/sidLTVblkTriSolve.m`:
+- `private/sidLTVblkTriSolve.m`:
   - Generic block tridiagonal forward-backward solver using cell arrays
   - Supports non-uniform block sizes (needed by initialisation)
   - Shared by both the initialisation and the state estimation steps
-- `internal/sidLTVdiscIOInit.m`:
+- `private/sidLTVdiscIOInit.m`:
   - Initialisation: single forward-backward pass for states `{x_l(k)}` and input matrices `{B(k)}` jointly with `A = I` (exact minimisation of `J|_{A=I}`, jointly convex, composite block tridiagonal per Appendix B)
   - Uses `sidLTVblkTriSolve` with composite unknowns `w(k) = [x_1(k);...;x_L(k); vec(B(k))]`
 - `sidLTVStateEst.m`:

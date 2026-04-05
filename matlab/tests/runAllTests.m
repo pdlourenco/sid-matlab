@@ -22,7 +22,9 @@ end
 runner__matlabDir = fileparts(runner__thisDir);
 runner__sidDir = fullfile(runner__matlabDir, 'sid');
 addpath(runner__sidDir);
-addpath(fullfile(runner__sidDir, 'internal'));
+% Tests need access to private helpers for unit-testing them directly.
+% End users never need this — sid/private/ is auto-visible to sid/ functions.
+addpath(fullfile(runner__sidDir, 'private'));
 
 % Auto-discover test files matching test_*.m
 runner__listing = dir(fullfile(runner__thisDir, 'test_*.m'));
