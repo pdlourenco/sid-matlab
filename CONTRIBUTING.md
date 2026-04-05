@@ -36,6 +36,27 @@ documentation, code style, and testing:
 
 - **MATLAB/Octave**: [`matlab/CONTRIBUTING.md`](matlab/CONTRIBUTING.md)
 
+## Test and Example Auto-Discovery
+
+Test and example runners in every language **discover files by naming
+convention** — there is no hardcoded manifest to maintain. To add a test
+or example, create a file matching the pattern for that language:
+
+| Language | Tests | Examples |
+|----------|-------|----------|
+| MATLAB/Octave | `test_*.m` | `example*.m` |
+| Python | `test_*.py` | `example_*.py` |
+| Julia | `test_*.jl` | `example_*.jl` |
+
+Runners sort discovered files alphabetically and execute them in order.
+**Do not maintain hardcoded file lists** — auto-discovery prevents the
+common failure mode where a new test exists but is never executed because
+it was not added to a manifest.
+
+Each language's contributing guide documents the discovery mechanism in
+detail. When starting a new language port, implement the runner with
+auto-discovery from day one.
+
 ## CI
 
 CI workflows run per-language:

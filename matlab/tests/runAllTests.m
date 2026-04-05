@@ -1,6 +1,8 @@
 %% runAllTests - Master test runner for the sid-matlab package
 %
-% Runs all test scripts and reports pass/fail summary.
+% Discovers and runs all test_*.m scripts in this directory, then reports
+% a pass/fail summary. New tests are picked up automatically — no manifest
+% to edit.
 %
 % Usage:
 %   cd tests
@@ -11,50 +13,27 @@
 
 fprintf('=== sid-matlab Test Suite ===\n\n');
 
-% Add paths
+% Add paths — resolve this script's directory robustly (mfilename may
+% return only the base name when invoked via run() in some environments).
 runner__thisDir = fileparts(mfilename('fullpath'));
+if isempty(runner__thisDir)
+    runner__thisDir = fileparts(which(mfilename));
+end
 runner__matlabDir = fileparts(runner__thisDir);
 runner__sidDir = fullfile(runner__matlabDir, 'sid');
 addpath(runner__sidDir);
 addpath(fullfile(runner__sidDir, 'internal'));
 
-runner__testFiles = {
-    'test_sidHannWin'
-    'test_sidCov'
-    'test_sidDFT'
-    'test_sidWindowedDFT'
-    'test_sidUncertainty'
-    'test_sidValidate'
-    'test_sidFreqBT'
-    'test_sidFreqETFE'
-    'test_sidFreqBTFDR'
-    'test_sidPlotting'
-    'test_validation'
-    'test_crossMethod'
-    'test_sidSpectrogram'
-    'test_sidFreqMap'
-    'test_sidSpectrogramPlot'
-    'test_sidMapPlot'
-    'test_sidLTVdisc'
-    'test_sidLTVdiscTune'
-    'test_sidLTVdiscVarLen'
-    'test_sidLTVdiscUncertainty'
-    'test_sidLTVdiscFrozen'
-    'test_compareSpa'
-    'test_compareEtfe'
-    'test_compareSpafdr'
-    'test_compareWelch'
-    'test_multiTrajectory'
-    'test_compareMultiTraj'
-    'test_sidDetrend'
-    'test_sidResidual'
-    'test_sidCompare'
-    'test_sidModelOrder'
-    'test_sidLTIfreqIO'
-    'test_sidLTVStateEst'
-    'test_sidLTVdiscIO'
-    'test_reviewFixes'
-};
+% Auto-discover test files matching test_*.m
+runner__listing = dir(fullfile(runner__thisDir, 'test_*.m'));
+if isempty(runner__listing)
+    error('sid:noTests', 'No test_*.m files found in %s', runner__thisDir);
+end
+runner__testFiles = sort({runner__listing.name});
+% Strip .m extension (2 characters)
+for runner__k = 1:length(runner__testFiles)
+    runner__testFiles{runner__k} = runner__testFiles{runner__k}(1:end-2);
+end
 
 runner__nTests = length(runner__testFiles);
 runner__passed = 0;

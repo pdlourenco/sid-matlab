@@ -233,6 +233,26 @@ k = k + 1;
 - Both must pass on **MATLAB R2016b+** and **GNU Octave 8.0+**
 - CI runs lint (`miss_hit`) and tests on both platforms automatically
 
+### Auto-discovery
+
+The test and example runners **discover files by naming convention** — there
+is no manifest to edit. To add a new test or example, simply create a file
+that follows the naming pattern:
+
+| Directory | Pattern | Example |
+|-----------|---------|---------|
+| `matlab/tests/` | `test_*.m` | `test_sidNewFeature.m` |
+| `matlab/examples/` | `example*.m` | `exampleNewFeature.m` |
+
+The runners use `dir('test_*.m')` and `dir('example*.m')` respectively.
+Files are sorted alphabetically and executed in that order. **Do not add
+entries to a hardcoded list** — it defeats the purpose of auto-discovery
+and creates merge conflicts.
+
+This convention applies across all language ports (Python, Julia). See the
+root [`CONTRIBUTING.md`](../CONTRIBUTING.md) for the cross-language naming
+table.
+
 ---
 
 ## Example and Test Scripts
