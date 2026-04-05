@@ -53,6 +53,7 @@ runner__testFiles = {
     'test_sidLTIfreqIO'
     'test_sidLTVStateEst'
     'test_sidLTVdiscIO'
+    'test_reviewFixes'
 };
 
 runner__nTests = length(runner__testFiles);
