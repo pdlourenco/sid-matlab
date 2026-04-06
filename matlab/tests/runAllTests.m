@@ -22,9 +22,17 @@ end
 runner__matlabDir = fileparts(runner__thisDir);
 runner__sidDir = fullfile(runner__matlabDir, 'sid');
 addpath(runner__sidDir);
-% Tests need access to private helpers for unit-testing them directly.
-% End users never need this — sid/private/ is auto-visible to sid/ functions.
-addpath(fullfile(runner__sidDir, 'private'));
+% MATLAB ignores addpath on directories named 'private'. Copy to a
+% temporary non-private-named directory for test-only access. Uses only
+% cross-platform MATLAB builtins (copyfile, rmdir) — no OS calls.
+runner__privateDir = fullfile(runner__sidDir, 'private');
+runner__shimDir = fullfile(runner__sidDir, 'private_test_shim');
+if exist(runner__shimDir, 'dir')
+    rmdir(runner__shimDir, 's');
+end
+mkdir(runner__shimDir);
+copyfile(fullfile(runner__privateDir, '*.m'), runner__shimDir);
+addpath(runner__shimDir);
 
 % Auto-discover test files matching test_*.m
 runner__listing = dir(fullfile(runner__thisDir, 'test_*.m'));
@@ -57,6 +65,10 @@ for runner__k = 1:runner__nTests
             strrep(runner__e.message, newline, ' '));
     end
 end
+
+% Clean up temporary test shim directory
+rmpath(runner__shimDir);
+rmdir(runner__shimDir, 's');
 
 fprintf('\n=== Test Summary ===\n');
 fprintf('  Total:  %d\n', runner__nTests);
