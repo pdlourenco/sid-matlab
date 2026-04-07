@@ -294,13 +294,13 @@ The standard deviation returned in the result struct is:
 
 **Regularization:** If `γ̂²(ω_k) < ε` (where `ε = 1e-10`), set `σ_G(ω_k) = Inf`. This corresponds to frequencies where the input has negligible power and the estimate is unreliable.
 
-**Note:** This formula gives the variance of the complex-valued `Ĝ`. The standard deviation `σ_G` applies equally to real and imaginary parts. Confidence intervals for magnitude are constructed as:
+**Note:** This formula gives the variance of the complex-valued `Ĝ`, defined as `E[|Ĝ - G|²]`. The real and imaginary parts of the estimation error have equal variance `σ_G²/2` each (by isotropy of the asymptotic distribution). Confidence bands for magnitude use the total complex standard deviation `σ_G`, corresponding to a circular region of radius `p × σ_G` in the complex plane (Ljung 1999, §6.4):
 
 ```
 |Ĝ(ω)| ± p × σ_G(ω)
 ```
 
-where `p` is the number of standard deviations (default: 3 for ≈99.7% coverage under Gaussian assumptions).
+where `p` is the number of standard deviations (default: 3 for ≈99.7% coverage). This is a conservative projection of the 2D circular confidence region onto the 1D magnitude axis, matching the convention used by the MATLAB System Identification Toolbox.
 
 **Multi-trajectory variance:** When `L` trajectories are ensemble-averaged, the variance is reduced by a factor of `L`:
 
@@ -336,17 +336,25 @@ This is the standard asymptotic result for windowed spectral estimates.
 
 ### 3.6 MIMO Variance (Diagonal Approximation)
 
-The SISO formula in §3.3 does not directly extend to MIMO systems because the multi-input, multi-output coherence structure is more complex. The implementation uses a **diagonal approximation** that treats each element `Ĝ_{ij}(ω)` independently:
+The SISO formula in §3.3 does not directly extend to MIMO systems because the multi-input, multi-output coherence structure is more complex. The exact asymptotic variance for the `(i,j)` element of the MIMO transfer matrix (Ljung 1999, Theorem 6.2) is:
+
+```
+Var{Ĝ_{ij}(ω)} = (C_W / N_eff) × Φ_v_{ii}(ω) × [Φ_u(ω)⁻¹]_{jj}
+```
+
+where `[Φ_u(ω)⁻¹]_{jj}` is the `(j,j)` element of the **inverse** input spectral matrix. This accounts for correlations between inputs: when inputs are correlated, `[Φ_u⁻¹]_{jj} > 1/Φ_u_{jj}` (by the matrix inversion inequality), so correlated inputs inflate the estimation variance.
+
+The implementation uses a **diagonal approximation** that replaces the inverse-diagonal with the reciprocal of the diagonal:
 
 ```
 Var{Ĝ_{ij}(ω)} ≈ (C_W / N_eff) × Φ̂_v_{ii}(ω) / Φ̂_u_{jj}(ω)
 ```
 
-where `Φ̂_v_{ii}` is the `(i,i)` diagonal of the noise spectrum matrix and `Φ̂_u_{jj}` is the `(j,j)` diagonal of the input spectrum matrix. This is the ratio of noise power at output `i` to input power at input `j`, scaled by the window norm — equivalent to treating each (i,j) channel as a SISO system.
+This is equivalent to treating each `(i,j)` channel as an independent SISO system.
 
 **Regularization:** If `Φ̂_u_{jj}(ω_k) < ε` (where `ε = 1e-10`), set `σ_{G_{ij}}(ω_k) = Inf`.
 
-**Limitations:** This approximation ignores cross-channel correlations in both the noise and input spectra. It is exact when inputs are uncorrelated and the noise is channel-independent, and provides a reasonable approximation otherwise. A full MIMO treatment based on `Φ̂_u(ω)^{-1} ⊗ Φ̂_v(ω)` is deferred to a future version.
+**Limitations:** The diagonal approximation ignores cross-channel correlations in both the noise and input spectra. It is exact when inputs are uncorrelated and the noise is channel-independent, and **underestimates** variance otherwise. A full MIMO treatment using `Φ̂_u(ω)⁻¹ ⊗ Φ̂_v(ω)` is deferred to a future version.
 
 ---
 
@@ -367,7 +375,7 @@ Y(ω_k) = Σ_{t=1}^{N} y(t) exp(-j ω_k t)
 U(ω_k) = Σ_{t=1}^{N} u(t) exp(-j ω_k t)
 ```
 
-This is equivalent to `sidFreqBT` with window size `M = N` (rectangular window). It provides the maximum frequency resolution but has high variance.
+This is equivalent to `sidFreqBT` with window size `M = N-1` and a rectangular lag window `W(τ) = 1`, i.e., using the full available covariance support without tapering (Ljung 1999, §6.3). It provides the maximum frequency resolution but has high variance.
 
 **Multi-trajectory ETFE:** When `L` trajectories are available, the cross-periodograms are averaged before forming the ratio:
 
@@ -394,6 +402,8 @@ For the ETFE, the noise spectrum estimate is the periodogram of the residuals:
 ```
 Φ̂_v(ω_k) = (1/N) × |Y(ω_k) - Ĝ(ω_k) × U(ω_k)|²
 ```
+
+**Bias:** Since `Ĝ` is estimated from the same data, `Φ̂_v` is biased downward — the residual is minimized over `G`, so the residual power underestimates the true noise power. For the BT estimator (§2), this bias vanishes asymptotically as `M/N → 0` (Ljung 1999, §6.3.2). For the ETFE (no smoothing), the bias is non-negligible and `Φ̂_v` should be interpreted as a lower bound on the true noise spectrum.
 
 ### 4.4 Time Series Mode
 
@@ -423,7 +433,7 @@ At each frequency `ω_k`, the local window size is:
 M_k = ceil(2π / R_k)
 ```
 
-where `R_k = R(ω_k)` is the desired resolution at that frequency.
+where `R_k = R(ω_k)` is the desired resolution at that frequency. Here "resolution" means the approximate main-lobe half-width (center to first null) of the Hann lag window's spectral response, which is `≈ 2π/M` rad/sample. Other bandwidth measures are narrower: the 3dB bandwidth is `≈ 0.72 × (2π/M)` and the equivalent noise bandwidth is `≈ 0.75 × (2π/M)`.
 
 If `R` is a scalar, it applies uniformly. If `R` is a vector of the same length as the frequency grid, each entry specifies the local resolution.
 
@@ -466,6 +476,8 @@ Two algorithms are supported via the `'Algorithm'` parameter:
 Both produce identical output structures: Ĝ(ω, t), Φ̂_v(ω, t), γ̂²(ω, t). The choice affects the bias-variance tradeoff within each segment, not the user-facing interface.
 
 For an LTI system, the map is constant along the time axis — this serves as a diagnostic check. For an LTV (linear time-varying) system, the map shows modes appearing, disappearing, shifting in frequency, or changing in gain.
+
+**Nonstationarity bias:** When the system varies within a segment, the spectral estimate is biased toward the time-averaged transfer function over the segment. For systems with rapid variation relative to the segment length, this bias dominates the estimation error. Shorter segments reduce bias but increase variance — a time-frequency tradeoff analogous to bandwidth selection in the Blackman-Tukey method. Priestley (1981, Ch. 14) provides quantitative bounds on nonstationarity bias for spectral estimates of non-stationary processes.
 
 This extends the `spectrogram` concept from single-signal time-frequency analysis to **input-output system identification**:
 
@@ -568,7 +580,7 @@ Within each segment of length `L`, apply the Welch method (equivalent to `tfesti
 Var{Φ̂(ω)} ≈ Φ²(ω) / ν
 ```
 
-where `ν = 2J × (1 - c_overlap)` is the equivalent degrees of freedom, and `c_overlap` is a correction factor depending on the overlap ratio and window shape. For 50% overlap with a Hann window, `ν ≈ 1.8J`.
+where `ν` is the equivalent degrees of freedom. With no overlap, the `J` periodograms are independent and `ν = 2J`. With overlap, periodograms become correlated and `ν` decreases. For 50% overlap with a Hann window, `ν ≈ 1.8J` (Harris 1978). The exact formula involves the autocorrelation of the window function at the overlap lag and is not expressible in simple closed form; the implementation uses the empirical `1.8J` value directly.
 
 ### 6.6 Comparison of BT and Welch
 
@@ -1792,6 +1804,10 @@ Both plotting functions accept name-value options:
 10. Bendat, J.S. and Piersol, A.G. *Random Data: Analysis and Measurement Procedures*, 4th ed. Wiley, 2010. (Ch. 9: Statistical errors in spectral estimates; Ch. 11: Multiple-input/output relationships.)
 
 11. Antoni, J. and Schoukens, J. "A comprehensive study of the bias and variance of frequency-response-function measurements: optimal window selection and overlapping strategies." Automatica, 43(10):1723–1736, 2007.
+
+12. Harris, F.J. "On the use of windows for harmonic analysis with the discrete Fourier transform." Proc. IEEE, 66(1):51–83, 1978. (Effective DOF for Welch estimator with overlap.)
+
+13. Priestley, M.B. *Spectral Analysis and Time Series*. Academic Press, 1981. (Ch. 14: Non-stationary processes and time-dependent spectral analysis.)
 
 ---
 
