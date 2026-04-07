@@ -179,7 +179,8 @@ title('Lambda Tuning: Validation Loss Curve');
 grid on;
 
 runner__nCompleted = runner__nCompleted + 1;
-fprintf('  Section %d completed: Validation-based lambda tuning with sidLTVdiscTune.\n', runner__nCompleted);
+fprintf('  Section %d completed: %s.\n', ...
+    runner__nCompleted, 'Validation-based lambda tuning with sidLTVdiscTune');
 
 %% Preconditioning for numerical stability
 % Block-diagonal preconditioning can improve conditioning of the solve.
@@ -281,7 +282,8 @@ grid on;
 hold off;
 
 runner__nCompleted = runner__nCompleted + 1;
-fprintf('  Section %d completed: Frozen transfer function with sidLTVdiscFrozen.\n', runner__nCompleted);
+fprintf('  Section %d completed: %s.\n', ...
+    runner__nCompleted, 'Frozen transfer function with sidLTVdiscFrozen');
 
 %% 6. Frequency-Based Lambda Tuning (no validation data needed)
 %
@@ -316,7 +318,9 @@ grid on;
 fprintf('\nFrequency-based tuning complete.\n');
 
 runner__nCompleted = runner__nCompleted + 1;
-fprintf('  Section %d completed: 6. Frequency-Based Lambda Tuning (no validation data needed).\n', runner__nCompleted);
+fprintf('  Section %d completed: %s.\n', ...
+    runner__nCompleted, ...
+    '6. Frequency-Based Lambda Tuning (no validation data needed)');
 
 %% Model validation with sidCompare and sidResidual
 % Compare COSMIC model predictions against the training data.
@@ -336,6 +340,8 @@ else
 end
 
 runner__nCompleted = runner__nCompleted + 1;
-fprintf('  Section %d completed: Model validation with sidCompare and sidResidual.\n', runner__nCompleted);
+fprintf('  Section %d completed: %s.\n', ...
+    runner__nCompleted, 'Model validation with sidCompare and sidResidual');
 
-fprintf('exampleLTVdisc: %d/%d sections completed\n', runner__nCompleted, runner__nCompleted);
+fprintf('exampleLTVdisc: %d/%d sections completed\n', ...
+    runner__nCompleted, runner__nCompleted);

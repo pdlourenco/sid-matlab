@@ -22,7 +22,8 @@ v = 0.5 * filter(1, [1 -0.6], e);   % colored noise
 y = y_clean + v;
 
 runner__nCompleted = runner__nCompleted + 1;
-fprintf('  Section %d completed: Generate data: ARMA system with colored noise.\n', runner__nCompleted);
+fprintf('  Section %d completed: %s.\n', ...
+    runner__nCompleted, 'Generate data: ARMA system with colored noise');
 
 %% Estimate with sidFreqBT
 result = sidFreqBT(y, u, 'WindowSize', 40);
@@ -54,7 +55,8 @@ ylim([0 1]);
 grid on;
 
 runner__nCompleted = runner__nCompleted + 1;
-fprintf('  Section %d completed: Plot Bode magnitude and coherence together.\n', runner__nCompleted);
+fprintf('  Section %d completed: %s.\n', ...
+    runner__nCompleted, 'Plot Bode magnitude and coherence together');
 
 %% Confidence bands reflect coherence
 % Where coherence is high, uncertainty is low (narrow bands).

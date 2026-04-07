@@ -23,7 +23,8 @@ fprintf('  Section %d completed: Generate test data.\n', runner__nCompleted);
 result = sidFreqBT(y, u, 'SampleTime', Ts);
 
 runner__nCompleted = runner__nCompleted + 1;
-fprintf('  Section %d completed: Estimate frequency response using Blackman-Tukey.\n', runner__nCompleted);
+fprintf('  Section %d completed: %s.\n', ...
+    runner__nCompleted, 'Estimate frequency response using Blackman-Tukey');
 
 %% Plot Bode diagram
 figure;
@@ -78,7 +79,8 @@ fprintf('Without detrend: max |G| at low freq = %.2f\n', max(abs(result_raw.Resp
 fprintf('With detrend:    max |G| at low freq = %.2f\n', max(abs(result_dt.Response)));
 
 runner__nCompleted = runner__nCompleted + 1;
-fprintf('  Section %d completed: Preprocessing: detrend data before estimation.\n', runner__nCompleted);
+fprintf('  Section %d completed: %s.\n', ...
+    runner__nCompleted, 'Preprocessing: detrend data before estimation');
 
 %% Model validation: residual analysis
 resid = sidResidual(result, y, u);
@@ -101,7 +103,8 @@ comp = sidCompare(result, y, u);
 fprintf('NRMSE fit: %.1f%%\n', comp.Fit);
 
 runner__nCompleted = runner__nCompleted + 1;
-fprintf('  Section %d completed: Model validation: compare predicted vs measured.\n', runner__nCompleted);
+fprintf('  Section %d completed: %s.\n', ...
+    runner__nCompleted, 'Model validation: compare predicted vs measured');
 
 %% Time series mode (no input)
 % Estimate the output power spectrum of an AR(1) process.

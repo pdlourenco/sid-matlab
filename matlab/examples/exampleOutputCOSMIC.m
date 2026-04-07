@@ -95,7 +95,9 @@ fprintf('Converged in %d iterations.\n', result.Iterations);
 fprintf('Final cost: %.4f\n', result.Cost(end));
 
 runner__nCompleted = runner__nCompleted + 1;
-fprintf('  Section %d completed: Step 4: Identify LTV system from partial observations.\n', runner__nCompleted);
+fprintf('  Section %d completed: %s.\n', ...
+    runner__nCompleted, ...
+    'Step 4: Identify LTV system from partial observations');
 
 %% Compare recovered A to true A
 A_mean = mean(result.A, 3);
@@ -121,7 +123,9 @@ grid on;
 hold off;
 
 runner__nCompleted = runner__nCompleted + 1;
-fprintf('  Section %d completed: Plot: recovered A(1,1) over time vs true value.\n', runner__nCompleted);
+fprintf('  Section %d completed: %s.\n', ...
+    runner__nCompleted, ...
+    'Plot: recovered A(1,1) over time vs true value');
 
 %% Plot: estimated vs true states (trajectory 1)
 figure;
@@ -143,7 +147,9 @@ title('State Recovery: Hidden State');
 grid on; hold off;
 
 runner__nCompleted = runner__nCompleted + 1;
-fprintf('  Section %d completed: Plot: estimated vs true states (trajectory 1).\n', runner__nCompleted);
+fprintf('  Section %d completed: %s.\n', ...
+    runner__nCompleted, ...
+    'Plot: estimated vs true states (trajectory 1)');
 
 %% Plot: convergence history
 figure;
@@ -182,7 +188,8 @@ obs_err = norm(Y_recon(:) - Y(:)) / norm(Y(:));
 fprintf('Observation reconstruction error: %.4f\n', obs_err);
 
 runner__nCompleted = runner__nCompleted + 1;
-fprintf('  Section %d completed: Model validation with sidCompare and sidResidual.\n', runner__nCompleted);
+fprintf('  Section %d completed: %s.\n', ...
+    runner__nCompleted, 'Model validation with sidCompare and sidResidual');
 
 %% Frozen transfer function (if available)
 % Compute the frozen transfer function at the midpoint and plot.

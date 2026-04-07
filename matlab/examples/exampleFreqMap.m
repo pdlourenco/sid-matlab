@@ -118,6 +118,7 @@ sidMapPlot(result_ts, 'PlotType', 'spectrum');
 title('Time-Series: Output Spectrum Evolves as AR(1) Pole Drifts');
 
 runner__nCompleted = runner__nCompleted + 1;
-fprintf('  Section %d completed: Time-series mode: evolving output spectrum.\n', runner__nCompleted);
+fprintf('  Section %d completed: %s.\n', ...
+    runner__nCompleted, 'Time-series mode: evolving output spectrum');
 
 fprintf('exampleFreqMap: %d/%d sections completed\n', runner__nCompleted, runner__nCompleted);

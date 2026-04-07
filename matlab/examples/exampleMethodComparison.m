@@ -132,7 +132,9 @@ grid on;
 hold off;
 
 runner__nCompleted = runner__nCompleted + 1;
-fprintf('  Section %d completed: Time-series comparison: periodogram vs smoothed spectrum.\n', runner__nCompleted);
+fprintf('  Section %d completed: %s.\n', ...
+    runner__nCompleted, ...
+    'Time-series comparison: periodogram vs smoothed spectrum');
 
 %% Model output comparison using sidCompare
 % Compare how well each method predicts the measured output.
@@ -159,4 +161,5 @@ fprintf('%-12s  %-12s  %-11s  %-9s\n', 'sidFreqETFE', 'N (full)',     'No',  'No
 runner__nCompleted = runner__nCompleted + 1;
 fprintf('  Section %d completed: Summary of method trade-offs.\n', runner__nCompleted);
 
-fprintf('exampleMethodComparison: %d/%d sections completed\n', runner__nCompleted, runner__nCompleted);
+fprintf('exampleMethodComparison: %d/%d sections completed\n', ...
+    runner__nCompleted, runner__nCompleted);

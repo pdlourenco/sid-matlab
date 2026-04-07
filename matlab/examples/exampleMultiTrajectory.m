@@ -45,7 +45,9 @@ sidBodePlot(rL, 'Confidence', 3);
 title(sprintf('Ensemble of %d Trajectories', L));
 
 runner__nCompleted = runner__nCompleted + 1;
-fprintf('  Section %d completed: 1. LTI Ensemble Averaging — Tighter Confidence Bands.\n', runner__nCompleted);
+fprintf('  Section %d completed: %s.\n', ...
+    runner__nCompleted, ...
+    '1. LTI Ensemble Averaging — Tighter Confidence Bands');
 
 %% 2. LTV Time-Varying Map — Sharper Transition Detection
 % System with a step change at t=N/2: pole shifts from 0.85 to 0.5.
@@ -84,7 +86,9 @@ sidMapPlot(rL_map, 'PlotType', 'magnitude');
 title(sprintf('Ensemble of %d Trajectories', L));
 
 runner__nCompleted = runner__nCompleted + 1;
-fprintf('  Section %d completed: 2. LTV Time-Varying Map — Sharper Transition Detection.\n', runner__nCompleted);
+fprintf('  Section %d completed: %s.\n', ...
+    runner__nCompleted, ...
+    '2. LTV Time-Varying Map — Sharper Transition Detection');
 
 %% 3. Spectrogram Averaging — Chirp in Noise
 % A chirp signal buried in noise. Single trajectory: barely visible.
@@ -113,7 +117,9 @@ sidSpectrogramPlot(rL_spec);
 title(sprintf('Ensemble of %d Trajectories', L));
 
 runner__nCompleted = runner__nCompleted + 1;
-fprintf('  Section %d completed: 3. Spectrogram Averaging — Chirp in Noise.\n', runner__nCompleted);
+fprintf('  Section %d completed: %s.\n', ...
+    runner__nCompleted, ...
+    '3. Spectrogram Averaging — Chirp in Noise');
 
 %% 4. COSMIC + sidFreqMap Consistency
 % Use the same multi-trajectory dataset for both COSMIC (state-space)
@@ -155,4 +161,5 @@ fprintf('\nDone. Multi-trajectory examples completed.\n');
 runner__nCompleted = runner__nCompleted + 1;
 fprintf('  Section %d completed: 4. COSMIC + sidFreqMap Consistency.\n', runner__nCompleted);
 
-fprintf('exampleMultiTrajectory: %d/%d sections completed\n', runner__nCompleted, runner__nCompleted);
+fprintf('exampleMultiTrajectory: %d/%d sections completed\n', ...
+    runner__nCompleted, runner__nCompleted);

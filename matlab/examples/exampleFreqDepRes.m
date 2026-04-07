@@ -19,7 +19,8 @@ u = randn(N, 1);
 y = filter(b, a_coeff, u) + 0.1 * randn(N, 1);
 
 runner__nCompleted = runner__nCompleted + 1;
-fprintf('  Section %d completed: Generate test data: second-order resonant system.\n', runner__nCompleted);
+fprintf('  Section %d completed: %s.\n', ...
+    runner__nCompleted, 'Generate test data: second-order resonant system');
 
 %% Fixed-window sidFreqBT: the resolution-variance trade-off
 % Small M (=15): smooth but misses the resonance peak.
@@ -44,7 +45,9 @@ grid on;
 hold off;
 
 runner__nCompleted = runner__nCompleted + 1;
-fprintf('  Section %d completed: Fixed-window sidFreqBT: the resolution-variance trade-off.\n', runner__nCompleted);
+fprintf('  Section %d completed: %s.\n', ...
+    runner__nCompleted, ...
+    'Fixed-window sidFreqBT: the resolution-variance trade-off');
 
 %% Scalar resolution with sidFreqBTFDR
 % Resolution R sets the window size as M = round(2*pi / R).
