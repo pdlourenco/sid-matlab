@@ -50,7 +50,7 @@ fprintf('  Section %d completed: %s.\n', ...
     'Fixed-window sidFreqBT: the resolution-variance trade-off');
 
 %% Scalar resolution with sidFreqBTFDR
-% Resolution R sets the window size as M = round(2*pi / R).
+% Resolution R sets the window size as M = ceil(2*pi / R).
 % Smaller R = finer resolution (larger window).
 
 result_fdr = sidFreqBTFDR(y, u, 'Resolution', 0.2, 'SampleTime', Ts);

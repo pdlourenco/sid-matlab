@@ -41,9 +41,9 @@ runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 1 passed: cell array input works.\n');
 
 %% Test 2: Both paths recover the system well with uniform-length data
-% Note: The 3D path normalizes by sqrt(N), the cell path by sqrt(L).
-% With the same lambda, the effective regularization differs, so results
-% are not bit-identical. We verify both recover the system independently.
+% Note: Both paths normalize by sqrt(N), ensuring consistent lambda scaling.
+% Results may not be bit-identical due to floating-point ordering differences.
+% We verify both recover the system independently.
 rng(2100);
 p = 2; q = 1; N = 30; L = 15;
 A_true = [0.9 0.1; -0.1 0.8];
