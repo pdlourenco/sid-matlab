@@ -4,6 +4,7 @@
 % paths, consistency between paths, and known analytical DFTs.
 
 fprintf('Running test_sidDFT...\n');
+runner__nPassed = 0;
 
 %% Test 1: Direct DFT of a known signal
 % x = [1; 0; 0; 0] (impulse), DFT should be exp(-j*w*1) = exp(-jw) for all w
@@ -12,6 +13,8 @@ freqs = [pi/4; pi/2; pi];
 X = sidDFT(x, freqs, false);
 expected = exp(-1j * freqs);
 assert(max(abs(X - expected)) < 1e-12, 'DFT of impulse at t=1 should be exp(-jw)');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 1 passed: direct DFT of a known signal.\n');
 
 %% Test 2: DFT of constant signal
 % x = ones(N, 1): X(w) = sum_{t=1}^{N} exp(-jwt) = exp(-jw) * (1-exp(-jwN))/(1-exp(-jw))
@@ -21,6 +24,8 @@ w = pi/3;
 X = sidDFT(x, w, false);
 expected = sum(exp(-1j * w * (1:N)'));
 assert(abs(X - expected) < 1e-10, 'DFT of constant should match direct sum');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 2 passed: DFT of constant signal.\n');
 
 %% Test 3: FFT vs direct DFT consistency on default 128-point grid
 rng(42);
@@ -32,6 +37,8 @@ X_direct = sidDFT(x, freqs, false);
 % Tolerance needs to be moderate due to FFT binning/interpolation
 relErr = max(abs(X_fft - X_direct)) / max(abs(X_direct));
 assert(relErr < 0.05, 'FFT and direct DFT should agree on default grid (relErr=%.4f)', relErr);
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 3 passed: FFT vs direct DFT consistency.\n');
 
 %% Test 4: Multi-channel signal
 rng(7);
@@ -47,6 +54,8 @@ for k = 1:3
     X1(k) = sum(x(:,1) .* exp(-1j * freqs(k) * t));
 end
 assert(max(abs(X(:,1) - X1)) < 1e-10, 'Multi-channel DFT should match per-channel computation');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 4 passed: multi-channel signal.\n');
 
 %% Test 5: Output dimensions
 rng(1);
@@ -54,6 +63,8 @@ x = randn(100, 2);
 freqs = (1:64)' * pi / 64;
 X = sidDFT(x, freqs, false);
 assert(isequal(size(X), [64, 2]), 'Output size should be (nf x p)');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 5 passed: output dimensions.\n');
 
 %% Test 6: Single frequency
 x = randn(50, 1);
@@ -62,6 +73,8 @@ X = sidDFT(x, freqs, false);
 assert(isequal(size(X), [1, 1]), 'Single frequency should return scalar');
 expected = sum(x .* exp(-1j * pi/2 * (1:50)'));
 assert(abs(X - expected) < 1e-10, 'Single frequency DFT should match');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 6 passed: single frequency.\n');
 
 %% Test 7: Parseval-like energy check (direct path)
 rng(88);
@@ -77,5 +90,7 @@ Xdc = sum(x);
 energy_freq = (abs(Xdc)^2 + sum(abs(X).^2)) / N;
 energy_time = sum(x.^2);
 assert(abs(energy_freq - energy_time) < 1e-8, 'Parseval theorem should hold');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 7 passed: Parseval-like energy check.\n');
 
-fprintf('  test_sidDFT: ALL PASSED\n');
+fprintf('test_sidDFT: %d/%d passed\n', runner__nPassed, runner__nPassed);

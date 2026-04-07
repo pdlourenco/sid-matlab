@@ -4,6 +4,7 @@
 % and correctness of spectral estimates.
 
 fprintf('Running test_sidFreqBT...\n');
+runner__nPassed = 0;
 
 %% Test 1: Result struct has all required fields
 rng(42);
@@ -18,12 +19,16 @@ requiredFields = {'Frequency', 'FrequencyHz', 'Response', 'ResponseStd', ...
 for i = 1:length(requiredFields)
     assert(isfield(result, requiredFields{i}), 'Missing field: %s', requiredFields{i});
 end
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 1 passed: result struct has all required fields.\n');
 
 %% Test 2: Correct metadata
 assert(result.DataLength == N, 'DataLength should be N');
 assert(strcmp(result.Method, 'sidFreqBT'), 'Method should be sidFreqBT');
 assert(result.SampleTime == 1.0, 'Default SampleTime should be 1.0');
 assert(length(result.Frequency) == 128, 'Default should be 128 frequencies');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 2 passed: correct metadata.\n');
 
 %% Test 3: SISO dimensions
 nf = length(result.Frequency);
@@ -31,13 +36,19 @@ assert(isequal(size(result.Response), [nf, 1]), 'SISO Response should be (nf x 1
 assert(isequal(size(result.ResponseStd), [nf, 1]), 'SISO ResponseStd should be (nf x 1)');
 assert(isequal(size(result.NoiseSpectrum), [nf, 1]), 'SISO NoiseSpectrum should be (nf x 1)');
 assert(isequal(size(result.Coherence), [nf, 1]), 'SISO Coherence should be (nf x 1)');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 3 passed: SISO dimensions.\n');
 
 %% Test 4: Coherence is in [0, 1]
 assert(all(result.Coherence >= 0) && all(result.Coherence <= 1), ...
     'Coherence should be in [0, 1]');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 4 passed: coherence is in [0, 1].\n');
 
 %% Test 5: Noise spectrum is non-negative
 assert(all(result.NoiseSpectrum >= 0), 'Noise spectrum should be non-negative');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 5 passed: noise spectrum is non-negative.\n');
 
 %% Test 6: Time series mode
 y_ts = randn(300, 1);
@@ -46,26 +57,36 @@ assert(isempty(result_ts.Response), 'Time series: Response should be empty');
 assert(isempty(result_ts.ResponseStd), 'Time series: ResponseStd should be empty');
 assert(isempty(result_ts.Coherence), 'Time series: Coherence should be empty');
 assert(all(result_ts.NoiseSpectrum >= -1e-10), 'Time series spectrum should be non-negative');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 6 passed: time series mode.\n');
 
 %% Test 7: Custom window size
 result_cust = sidFreqBT(y, u, 'WindowSize', 20);
 assert(result_cust.WindowSize == 20, 'Custom WindowSize should be 20');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 7 passed: custom window size.\n');
 
 %% Test 8: Custom frequencies
 w = linspace(0.1, pi, 50)';
 result_cust = sidFreqBT(y, u, 'WindowSize', 20, 'Frequencies', w);
 assert(length(result_cust.Frequency) == 50, 'Should have 50 custom frequencies');
 assert(max(abs(result_cust.Frequency - w)) < 1e-12, 'Frequencies should match input');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 8 passed: custom frequencies.\n');
 
 %% Test 9: Custom sample time affects FrequencyHz
 result_st = sidFreqBT(y, u, 'SampleTime', 0.01);
 expected_hz = result_st.Frequency / (2 * pi * 0.01);
 assert(max(abs(result_st.FrequencyHz - expected_hz)) < 1e-12, ...
     'FrequencyHz should be freq / (2*pi*Ts)');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 9 passed: custom sample time affects FrequencyHz.\n');
 
 %% Test 10: Positional syntax works
 result_pos = sidFreqBT(y, u, 15);
 assert(result_pos.WindowSize == 15, 'Positional M should work');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 10 passed: positional syntax works.\n');
 
 %% Test 11: MIMO mode (2 outputs, 1 input)
 rng(7);
@@ -77,6 +98,8 @@ nf = length(result_mimo.Frequency);
 assert(size(result_mimo.Response, 1) == nf && size(result_mimo.Response, 2) == 2, ...
     'MIMO Response size should be (nf x 2)');
 assert(isempty(result_mimo.Coherence), 'MIMO Coherence should be empty');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 11 passed: MIMO mode (2 outputs, 1 input).\n');
 
 %% Test 12: Uncertainty std is finite and non-negative for SISO
 rng(42);
@@ -86,6 +109,8 @@ result = sidFreqBT(y, u);
 assert(all(isfinite(result.ResponseStd)), 'SISO ResponseStd should be finite');
 assert(all(result.ResponseStd >= 0), 'SISO ResponseStd should be non-negative');
 assert(all(isfinite(result.NoiseSpectrumStd)), 'NoiseSpectrumStd should be finite');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 12 passed: uncertainty std is finite and non-negative for SISO.\n');
 
 %% Test 13: Known first-order system identification
 % y(t) = 0.9*y(t-1) + u(t) => G(z) = 1/(1-0.9*z^{-1})
@@ -104,6 +129,8 @@ for i = 1:length(idx)
     relErr = abs(abs(result.Response(k)) - abs(G_true(k))) / abs(G_true(k));
     assert(relErr < 0.15, 'Magnitude at freq %d should match true system (relErr=%.3f)', k, relErr);
 end
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 13 passed: known first-order system identification.\n');
 
 %% Test 14: Multi-trajectory — NumTrajectories field and variance reduction
 rng(14);
@@ -140,6 +167,7 @@ assert(err_mt < err_st, ...
     'Multi-traj error %.4f should be less than single %.4f', ...
     err_mt, err_st);
 
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 14 passed: multi-trajectory (L=%d, ratio=%.3f).\n', ...
     L14, ratio);
 
@@ -157,6 +185,7 @@ catch e
     end
 end
 assert(passed, 'WindowSize=1 should raise an error');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 15 passed: M < 2 rejected.\n');
 
 %% Test 16: Near-zero input — should not crash
@@ -167,6 +196,7 @@ y = randn(N, 1);
 result = sidFreqBT(y, u, 'WindowSize', 20);
 % Response may be huge/NaN but should not crash
 assert(isfield(result, 'Response'), 'Should return a result struct');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 16 passed: near-zero input handled.\n');
 
-fprintf('  test_sidFreqBT: ALL PASSED\n');
+fprintf('test_sidFreqBT: %d/%d passed\n', runner__nPassed, runner__nPassed);

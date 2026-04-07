@@ -1,6 +1,7 @@
 % test_sidDetrend.m - Test polynomial detrending function
 
 fprintf('Running test_sidDetrend...\n');
+runner__nPassed = 0;
 
 %% Test 1: Linear trend removal
 N = 500;
@@ -20,6 +21,7 @@ assert(max(abs(trend_est - trend_true)) < 1.0, ...
 % Reconstruction: x = x_dt + trend
 assert(max(abs(x - (x_dt + trend_est))) < 1e-12, ...
     'x = x_detrended + trend must hold exactly');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 1 passed: linear trend removal.\n');
 
 %% Test 2: Mean removal (Order=0)
@@ -29,6 +31,7 @@ x = 42 + randn(N, 1);  % mean = 42
 x_dm = sidDetrend(x, 'Order', 0);
 
 assert(abs(mean(x_dm)) < 1e-10, 'Mean should be removed to machine precision');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 2 passed: mean removal (Order=0).\n');
 
 %% Test 3: Quadratic trend
@@ -40,6 +43,7 @@ x = trend_true + 0.01 * randn(N, 1);
 [x_dt, trend_est] = sidDetrend(x, 'Order', 2);
 assert(max(abs(trend_est - trend_true)) < 0.5, ...
     'Quadratic trend should be well approximated');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 3 passed: quadratic trend removal.\n');
 
 %% Test 4: Multi-channel
@@ -52,6 +56,7 @@ x = [3*t + 10 + randn(N,1), -2*t + 50 + randn(N,1), 0.5*t.^2 + randn(N,1)];
 assert(isequal(size(x_dt), [N, 3]), 'Output should be N x 3');
 assert(max(abs(x(:) - (x_dt(:) + trend(:)))) < 1e-12, ...
     'Reconstruction must hold for all channels');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 4 passed: multi-channel detrending.\n');
 
 %% Test 5: Segment-wise detrending
@@ -68,6 +73,7 @@ x_dt = sidDetrend(x, 'SegmentLength', 300);
 % Each segment should have its local trend removed
 assert(abs(mean(x_dt(1:300))) < 2, 'First segment mean should be small');
 assert(abs(mean(x_dt(301:600))) < 2, 'Second segment mean should be small');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 5 passed: segment-wise detrending.\n');
 
 %% Test 6: Multi-trajectory (3D)
@@ -83,6 +89,7 @@ end
 assert(isequal(size(x3_dt), [N, 1, L]), 'Output should preserve 3D shape');
 assert(max(abs(x3(:) - (x3_dt(:) + trend3(:)))) < 1e-12, ...
     'Reconstruction must hold for 3D input');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 6 passed: multi-trajectory (3D) detrending.\n');
 
 %% Test 7: Already zero-mean data
@@ -93,6 +100,7 @@ x = x - mean(x);  % exact zero mean
 
 x_dt = sidDetrend(x, 'Order', 0);
 assert(max(abs(x - x_dt)) < 1e-10, 'Zero-mean data should be unchanged');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 7 passed: already zero-mean data unchanged.\n');
 
 %% Test 8: Trend output reconstruction
@@ -101,6 +109,7 @@ N = 100;
 x = 5 * (0:N-1)' + randn(N, 1);
 [x_dt, trend] = sidDetrend(x);
 assert(max(abs(x - (x_dt + trend))) < 1e-12, 'x = x_dt + trend exactly');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 8 passed: trend output reconstruction.\n');
 
 %% Test 9: High polynomial degree (Order=5)
@@ -116,6 +125,7 @@ assert(max(abs(trend_est - trend_true)) < 0.1, ...
     'Order-5 trend should be well recovered');
 assert(max(abs(x - (x_dt + trend_est))) < 1e-12, ...
     'Reconstruction must hold');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 9 passed: high polynomial degree (Order=5).\n');
 
 %% Test 10: Order >= N clamped gracefully
@@ -130,6 +140,7 @@ assert(isequal(size(x_dt), [N, 1]), 'Output size should be N x 1');
 % so detrended should be near zero
 assert(max(abs(x_dt)) < 1e-8, ...
     'Order >= N should fit data perfectly, detrended near zero');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 10 passed: Order >= N clamped gracefully.\n');
 
 %% Test 11: Segment length not dividing N evenly
@@ -145,6 +156,7 @@ assert(max(abs(x - (x_dt + trend))) < 1e-12, 'Reconstruction holds');
 % Last segment (10 samples) should still be detrended
 assert(abs(mean(x_dt(91:100))) < 5, ...
     'Last short segment should be detrended');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 11 passed: segment length not dividing N.\n');
 
-fprintf('  test_sidDetrend: ALL PASSED\n');
+fprintf('test_sidDetrend: %d/%d passed\n', runner__nPassed, runner__nPassed);

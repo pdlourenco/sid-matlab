@@ -7,6 +7,7 @@
 % parameters, and different noise levels.
 
 fprintf('Running test_compareSpa...\n');
+runner__nPassed = 0;
 
 %% Toolbox check
 if ~exist('spa', 'file')
@@ -48,6 +49,8 @@ assert(phaseErr < 0.01, ...
 relErr_noise = max(abs(real(result_sid.NoiseSpectrum) - spec_spa) ./ max(abs(spec_spa), 1e-10));
 assert(relErr_noise < 0.10, ...
     'Test 1: noise spectrum relErr=%.6f should be <10%%', relErr_noise);
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 1 passed: SISO first-order system, default window size.\n');
 
 %% Test 2: SISO second-order system, custom window size
 rng(20);
@@ -69,6 +72,8 @@ resp_spa = squeeze(G_spa.ResponseData);
 relErr = max(abs(result_sid.Response - resp_spa) ./ max(abs(resp_spa), 1e-10));
 assert(relErr < 0.01, ...
     'Test 2: complex response relErr=%.6f should be <1%%', relErr);
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 2 passed: SISO second-order system, custom window size.\n');
 
 %% Test 3: Custom frequency vector (non-default grid)
 rng(30);
@@ -88,6 +93,8 @@ resp_spa = squeeze(G_spa.ResponseData);
 relErr = max(abs(result_sid.Response - resp_spa) ./ max(abs(resp_spa), 1e-10));
 assert(relErr < 0.01, ...
     'Test 3: custom freq response relErr=%.6f should be <1%%', relErr);
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 3 passed: custom frequency vector.\n');
 
 %% Test 4: Time-series (output spectrum only)
 rng(40);
@@ -109,6 +116,8 @@ assert(relErr < 0.02, ...
     'Test 4: time-series spectrum relErr=%.6f should be <2%%', relErr);
 
 assert(isempty(result_sid.Response), 'Test 4: time-series Response should be empty');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 4 passed: time-series.\n');
 
 %% Test 5: SISO with significant noise - check coherence and noise spectrum
 rng(50);
@@ -135,6 +144,8 @@ assert(relErr_resp < 0.02, ...
 relErr_noise = max(abs(real(result_sid.NoiseSpectrum) - spec_spa) ./ max(abs(spec_spa), 1e-10));
 assert(relErr_noise < 0.10, ...
     'Test 5: noise spectrum relErr=%.6f should be <10%%', relErr_noise);
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 5 passed: SISO with significant noise.\n');
 
 %% Test 6: MIMO system (2 outputs, 1 input)
 rng(60);
@@ -184,6 +195,8 @@ for k = 1:length(w)
     assert(det(P) >= -tol_psd, ...
         'Test 6: noise matrix not PSD at freq %d: det=%.4e', k, det(P));
 end
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 6 passed: MIMO system.\n');
 
 %% Test 7: Non-unit sample time
 rng(70);
@@ -210,5 +223,7 @@ assert(relErr < 0.02, ...
 % Verify FrequencyHz matches
 assert(max(abs(result_sid.FrequencyHz - G_spa.Frequency / (2*pi))) < 1e-10, ...
     'Test 7: FrequencyHz should match spa frequency in Hz');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 7 passed: non-unit sample time.\n');
 
-fprintf('  test_compareSpa: ALL PASSED\n');
+fprintf('test_compareSpa: %d/%d passed\n', runner__nPassed, runner__nPassed);

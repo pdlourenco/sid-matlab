@@ -4,6 +4,7 @@
 % handles edge cases. Uses headless mode fallback for CI.
 
 fprintf('Running test_sidMapPlot...\n');
+runner__nPassed = 0;
 
 %% Setup: create test result structs
 rng(42);
@@ -20,6 +21,7 @@ try
     assert(isfield(h, 'ax'), 'Should have ax handle');
     assert(isfield(h, 'surf'), 'Should have surf handle');
     close(h.fig);
+    runner__nPassed = runner__nPassed + 1;
     fprintf('  Test 1 passed: magnitude plot\n');
 catch e
     if contains(e.message, 'figure') || contains(e.message, 'display') ...
@@ -34,6 +36,7 @@ end
 try
     h = sidMapPlot(result_siso, 'PlotType', 'phase');
     close(h.fig);
+    runner__nPassed = runner__nPassed + 1;
     fprintf('  Test 2 passed: phase plot\n');
 catch e
     if contains(e.message, 'figure') || contains(e.message, 'display') ...
@@ -48,6 +51,7 @@ end
 try
     h = sidMapPlot(result_siso, 'PlotType', 'noise');
     close(h.fig);
+    runner__nPassed = runner__nPassed + 1;
     fprintf('  Test 3 passed: noise plot\n');
 catch e
     if contains(e.message, 'figure') || contains(e.message, 'display') ...
@@ -62,6 +66,7 @@ end
 try
     h = sidMapPlot(result_siso, 'PlotType', 'coherence');
     close(h.fig);
+    runner__nPassed = runner__nPassed + 1;
     fprintf('  Test 4 passed: coherence plot\n');
 catch e
     if contains(e.message, 'figure') || contains(e.message, 'display') ...
@@ -76,6 +81,7 @@ end
 try
     h = sidMapPlot(result_ts, 'PlotType', 'spectrum');
     close(h.fig);
+    runner__nPassed = runner__nPassed + 1;
     fprintf('  Test 5 passed: spectrum plot (time series)\n');
 catch e
     if contains(e.message, 'figure') || contains(e.message, 'display') ...
@@ -90,6 +96,7 @@ end
 try
     h = sidMapPlot(result_siso, 'FrequencyUnit', 'Hz');
     close(h.fig);
+    runner__nPassed = runner__nPassed + 1;
     fprintf('  Test 6 passed: Hz frequency unit\n');
 catch e
     if contains(e.message, 'figure') || contains(e.message, 'display') ...
@@ -104,6 +111,7 @@ end
 try
     h = sidMapPlot(result_siso, 'CLim', [-40 10]);
     close(h.fig);
+    runner__nPassed = runner__nPassed + 1;
     fprintf('  Test 7 passed: custom CLim\n');
 catch e
     if contains(e.message, 'figure') || contains(e.message, 'display') ...
@@ -120,6 +128,7 @@ try
     error('Should have thrown sid:invalidResult');
 catch e
     if strcmp(e.identifier, 'sid:invalidResult')
+        runner__nPassed = runner__nPassed + 1;
         fprintf('  Test 8 passed: error on invalid result\n');
     elseif contains(e.message, 'figure') || contains(e.message, 'display') ...
             || contains(e.message, 'DISPLAY') || contains(e.message, 'java')
@@ -135,6 +144,7 @@ try
     error('Should have thrown sid:noResponse');
 catch e
     if strcmp(e.identifier, 'sid:noResponse')
+        runner__nPassed = runner__nPassed + 1;
         fprintf('  Test 9 passed: error on magnitude for time series\n');
     elseif contains(e.message, 'figure') || contains(e.message, 'display') ...
             || contains(e.message, 'DISPLAY') || contains(e.message, 'java')
@@ -150,6 +160,7 @@ try
     error('Should have thrown sid:invalidPlotType');
 catch e
     if strcmp(e.identifier, 'sid:invalidPlotType')
+        runner__nPassed = runner__nPassed + 1;
         fprintf('  Test 10 passed: error on invalid PlotType\n');
     elseif contains(e.message, 'figure') || contains(e.message, 'display') ...
             || contains(e.message, 'DISPLAY') || contains(e.message, 'java')
@@ -159,4 +170,4 @@ catch e
     end
 end
 
-fprintf('test_sidMapPlot: ALL TESTS PASSED\n');
+fprintf('test_sidMapPlot: %d/%d passed\n', runner__nPassed, runner__nPassed);

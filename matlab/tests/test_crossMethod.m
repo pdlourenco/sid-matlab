@@ -4,6 +4,7 @@
 % when applied to the same data and known systems.
 
 fprintf('Running test_crossMethod...\n');
+runner__nPassed = 0;
 
 %% Test 1: BT and BTFDR agree with equivalent parameters
 % When BTFDR uses a resolution that maps to the same window size as BT,
@@ -29,6 +30,8 @@ relErr_Phi = max(abs(result_bt.NoiseSpectrum - ...
     result_btfdr.NoiseSpectrum)) / ...
     max(abs(result_bt.NoiseSpectrum));
 assert(relErr_Phi < 0.01, 'BT and BTFDR noise spectra should agree (relErr=%.4f)', relErr_Phi);
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 1 passed: BT and BTFDR agree with equivalent parameters.\n');
 
 %% Test 2: All methods identify gain of pure-gain system
 rng(1);
@@ -44,6 +47,8 @@ result_btfdr = sidFreqBTFDR(y, u);
 assert(max(abs(abs(result_bt.Response) - 2.5)) < 0.05, 'BT: pure gain should be ~2.5');
 assert(max(abs(abs(result_etfe.Response) - 2.5)) < 0.01, 'ETFE: pure gain should be ~2.5');
 assert(max(abs(abs(result_btfdr.Response) - 2.5)) < 0.05, 'BTFDR: pure gain should be ~2.5');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 2 passed: all methods identify gain of pure-gain system.\n');
 
 %% Test 3: All methods give consistent phase for first-order system
 rng(2);
@@ -69,6 +74,8 @@ assert(median(phase_err_bt) < 0.10, 'BT phase should match true system');
 phase_err_btfdr = abs(angle(result_btfdr.Response(idx)) - phase_true);
 phase_err_btfdr = min(phase_err_btfdr, 2*pi - phase_err_btfdr);
 assert(median(phase_err_btfdr) < 0.10, 'BTFDR phase should match true system');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 3 passed: all methods give consistent phase for first-order system.\n');
 
 %% Test 4: Time series spectra are consistent across methods
 rng(3);
@@ -100,6 +107,8 @@ assert(relErr_btfdr < 0.15, ...
 ratio_etfe = median(result_etfe.NoiseSpectrum ./ Phi_true);
 assert(ratio_etfe > 0.5 && ratio_etfe < 2.0, ...
     'ETFE periodogram should be roughly correct on average (ratio=%.2f)', ratio_etfe);
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 4 passed: time series spectra are consistent across methods.\n');
 
 %% Test 5: All methods produce same output struct fields
 fields_bt = sort(fieldnames(result_bt));
@@ -107,12 +116,16 @@ fields_etfe = sort(fieldnames(result_etfe));
 fields_btfdr = sort(fieldnames(result_btfdr));
 assert(isequal(fields_bt, fields_etfe), 'BT and ETFE should have same fields');
 assert(isequal(fields_bt, fields_btfdr), 'BT and BTFDR should have same fields');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 5 passed: all methods produce same output struct fields.\n');
 
 %% Test 6: Frequency vectors are consistent
 assert(max(abs(result_bt.Frequency - result_etfe.Frequency)) < 1e-12, ...
     'Default frequencies should be the same across methods');
 assert(max(abs(result_bt.Frequency - result_btfdr.Frequency)) < 1e-12, ...
     'Default frequencies should be the same across methods');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 6 passed: frequency vectors are consistent.\n');
 
 %% Test 7: BT with ETFE-like large window approaches ETFE
 % When BT uses M = N/2 (maximum), it's similar to the periodogram
@@ -130,6 +143,8 @@ corr_mag = corrcoef(abs(result_bt_large.Response), abs(result_etfe.Response));
 assert(corr_mag(1,2) > 0.7, ...
     'BT with large M should correlate with ETFE (corr=%.2f)', ...
     corr_mag(1,2));
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 7 passed: BT with ETFE-like large window approaches ETFE.\n');
 
 %% Test 8: MIMO results have consistent dimensions across methods
 rng(5);
@@ -146,6 +161,8 @@ nf = 128;
 assert(isequal(size(result_bt.Response), [nf 2 2]), 'BT MIMO: wrong Response size');
 assert(isequal(size(result_etfe.Response), [nf 2 2]), 'ETFE MIMO: wrong Response size');
 assert(isequal(size(result_btfdr.Response), [nf 2 2]), 'BTFDR MIMO: wrong Response size');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 8 passed: MIMO results have consistent dimensions across methods.\n');
 
 %% Test 9: Smoothed ETFE approaches BT-like smoothness
 rng(6);
@@ -162,5 +179,7 @@ var_bt = var(abs(result_bt.Response));
 ratio = var_etfe / var_bt;
 assert(ratio > 0.1 && ratio < 10, ...
     'Smoothed ETFE and BT should have comparable variance (ratio=%.2f)', ratio);
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 9 passed: smoothed ETFE approaches BT-like smoothness.\n');
 
-fprintf('  test_crossMethod: ALL PASSED\n');
+fprintf('test_crossMethod: %d/%d passed\n', runner__nPassed, runner__nPassed);

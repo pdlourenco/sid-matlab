@@ -5,6 +5,7 @@
 % state recovery, and input validation.
 
 fprintf('Running test_sidLTVdiscIO...\n');
+runner__nPassed = 0;
 
 %% Test 1: Output struct has all required fields
 rng(100);
@@ -34,6 +35,7 @@ requiredFields = {'A', 'B', 'X', 'H', 'R', 'Cost', 'Iterations', ...
 for i = 1:length(requiredFields)
     assert(isfield(result, requiredFields{i}), 'Missing field: %s', requiredFields{i});
 end
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 1 passed: all required fields present.\n');
 
 %% Test 2: Correct metadata and dimensions
@@ -50,6 +52,7 @@ assert(isequal(size(result.X), [N+1, n, L]), 'X should be (N+1 x n x L)');
 assert(isequal(size(result.H), [py, n]), 'H should be (py x n)');
 assert(isequal(size(result.R), [py, py]), 'R should be (py x py)');
 assert(result.Iterations >= 0, 'Should have >= 0 iterations');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 2 passed: metadata and dimensions correct.\n');
 
 %% Test 3: H = I equivalence with sidLTVdisc
@@ -80,6 +83,7 @@ errB = norm(mean(resultIO.B, 3) - mean(resultStd.B, 3), 'fro') / ...
        max(norm(mean(resultStd.B, 3), 'fro'), eps);
 assert(errA < 0.05, 'H=I: A mismatch with sidLTVdisc (errA=%.4f)', errA);
 assert(errB < 0.05, 'H=I: B mismatch with sidLTVdisc (errB=%.4f)', errB);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 3 passed: H=I matches sidLTVdisc (errA=%.4f, errB=%.4f).\n', errA, errB);
 
 %% Test 4: State estimator with double integrator (position measured)
@@ -130,6 +134,7 @@ assert(pos_err < 0.01, ...
 vel_err = norm(X_est(:,2) - X_true(:,2)) / max(norm(X_true(:,2)), 1);
 assert(vel_err < 0.05, ...
     'Double integrator velocity error too large (%.4f)', vel_err);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 4 passed: double integrator (pos=%.4f, vel=%.4f).\n', pos_err, vel_err);
 
 %% Test 5: Partial observation via full pipeline (double integrator)
@@ -182,6 +187,7 @@ for l = 1:L
     assert(obs_err < 0.5, ...
         'Partial obs pipeline: obs mismatch traj %d (%.3f)', l, obs_err);
 end
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 5 passed: partial obs pipeline (%d iters, no NaN).\n', ...
     result.Iterations);
 
@@ -218,6 +224,7 @@ for i = 2:length(res_mono.Cost)
         'Cost increased at iteration %d: %.6f > %.6f', ...
         i, res_mono.Cost(i), res_mono.Cost(i-1));
 end
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 6 passed: monotone cost decrease (%d iters).\n', ...
     res_mono.Iterations);
 
@@ -259,6 +266,7 @@ for l = 1:min(L, 3)
         'State recovery: too far from measurements (traj %d, err=%.3f)', ...
         l, obs_err);
 end
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 7 passed: state recovery consistent with measurements.\n');
 
 %% Test 8: Multi-trajectory improves estimates
@@ -293,6 +301,7 @@ errL = norm(mean(resL.A, 3) - A_true, 'fro');
 % Multi should be at least as good (or close)
 assert(errL <= err1 * 1.5, ...
     'Multi-trajectory should improve: errL=%.4f > 1.5*err1=%.4f', errL, 1.5*err1);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 8 passed: multi-trajectory (errL=%.4f vs err1=%.4f).\n', errL, err1);
 
 %% Test 9: R weighting
@@ -325,6 +334,7 @@ errR = norm(mean(resR.A, 3) - A_true, 'fro');
 % With correct R, estimates should be at least as good
 assert(errR <= errI * 1.5, ...
     'R weighting should help: errR=%.4f > 1.5*errI=%.4f', errR, 1.5*errI);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 9 passed: R weighting (errR=%.4f vs errI=%.4f).\n', errR, errI);
 
 %% Test 10: Input validation - mismatched H dimensions
@@ -338,6 +348,7 @@ catch e
     end
 end
 assert(passed, 'Should error on H dimension mismatch.');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 10 passed: input validation rejects bad H.\n');
 
 %% Test 11: Trust-region convergence
@@ -371,6 +382,7 @@ result_tr = sidLTVdiscIO(Y, U, H_obs, 'Lambda', 100, 'TrustRegion', 1);
 
 assert(isfield(result_tr, 'A'), 'Trust-region should return valid result');
 assert(result_tr.Iterations >= 1, 'Trust-region should iterate');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 11 passed: trust-region converges (%d iterations).\n', result_tr.Iterations);
 
 %% Test 12: Mass-spring-damper LTI, full observation
@@ -409,6 +421,7 @@ eig_est = sort(abs(eig(mean(result.A, 3))));
 eig_err = norm(eig_true - eig_est) / norm(eig_true);
 assert(eig_err < 1.0, ...
     'MSD full obs: eigenvalue error too large (%.4f)', eig_err);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 12 passed: MSD full obs (eig_err=%.4f, %d iters).\n', ...
     eig_err, result.Iterations);
 
@@ -438,6 +451,7 @@ for l = 1:min(L, 3)
     assert(obs_err < 1.0, ...
         'MSD partial: obs mismatch traj %d (%.3f)', l, obs_err);
 end
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 13 passed: MSD partial obs (%d iters).\n', ...
     result.Iterations);
 
@@ -485,6 +499,7 @@ for l = 1:min(L, 3)
     assert(obs_err < 0.5, ...
         'TV DI: obs mismatch traj %d (%.3f)', l, obs_err);
 end
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 14 passed: TV DI partial obs (%d iters).\n', ...
     result.Iterations);
 
@@ -527,6 +542,7 @@ result = sidLTVdiscIO( ...
 assert(~any(isnan(result.A(:))), 'TV MSD: NaN in A');
 assert(~any(isnan(result.X(:))), 'TV MSD: NaN in X');
 assert(result.Iterations >= 1, 'TV MSD: no iterations');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 15 passed: TV MSD partial obs (%d iters).\n', ...
     result.Iterations);
 
@@ -569,6 +585,7 @@ assert(errB < 1e-10, ...
 errX = norm(res_io.X(:) - X(:)) / norm(X(:));
 assert(errX < 1e-12, ...
     'Fast path X should equal Y for H=I (err=%.2e)', errX);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 16 passed: fast path H=I matches sidLTVdisc (errA=%.2e, errB=%.2e).\n', ...
     errA, errB);
 
@@ -612,6 +629,7 @@ A_mean = mean(res_rot.A, 3);
 errA = norm(A_mean - A_true, 'fro') / norm(A_true, 'fro');
 assert(errA < 0.01, ...
     'Rotated H: A error %.4f', errA);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 17 passed: rotated H fast path (errA=%.4f, errX=%.2e).\n', ...
     errA, errX);
 
@@ -655,6 +673,7 @@ A_mean = mean(res_tall.A, 3);
 errA = norm(A_mean - A_true, 'fro') / norm(A_true, 'fro');
 assert(errA < 0.01, ...
     'Tall H: A error %.4f', errA);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 18 passed: tall H fast path (errA=%.4f, errX=%.2e).\n', ...
     errA, errX);
 
@@ -703,6 +722,7 @@ for l = 1:L
     errXl = norm(res_cell.X{l} - res_3d.X(:, :, l));
     assert(errXl < 1e-8, 'Cell vs 3D: X{%d} mismatch %.2e', l, errXl);
 end
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 19 passed: cell input matches 3D (errA=%.2e).\n', errA);
 
 %% Test 20: Variable-length trajectories — fast path (rank(H) = n)
@@ -748,6 +768,7 @@ end
 A_mean = mean(res_vl.A, 3);
 errA = norm(A_mean - A_true, 'fro') / norm(A_true, 'fro');
 assert(errA < 0.01, 'VarLen fast path: A error %.4f', errA);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 20 passed: varlen fast path (errA=%.4f).\n', errA);
 
 %% Test 21: Variable-length trajectories — EM path (rank(H) < n)
@@ -794,6 +815,7 @@ for l = 1:L
     assert(errY < 0.1, ...
         'VarLen EM: Y reconstruction error %.4f for traj %d', errY, l);
 end
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 21 passed: varlen EM path (%d iters, %d traj).\n', ...
     res_vl.Iterations, L);
 
@@ -829,6 +851,7 @@ assert(isequal(size(B0), [n, q]), 'B0 should be %dx%d', n, q);
 eig_err = max(abs(sort(abs(eig(A0))) - sort(abs(eig(A_true)))));
 assert(eig_err < 0.3, ...
     'LTI trimmed: eigenvalue error %.4f', eig_err);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 22 passed: LTI trimming (eig_err=%.4f).\n', eig_err);
 
 %% Test 23: Convergence criterion — early stop when |dJ/J| < tol (SPEC §8.12.3)
@@ -869,6 +892,7 @@ if length(costs) >= 2
         'Final relative change %.2e should be < tol %.2e', ...
         final_rel, tol_val);
 end
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 23 passed: convergence criterion (%d iters).\n', ...
     res_conv.Iterations);
 
@@ -880,6 +904,7 @@ assert(res_lim.Iterations == 3, ...
     'Should stop at MaxIter=3, got %d', res_lim.Iterations);
 assert(length(res_lim.Cost) == 3, ...
     'Cost history should have 3 entries, got %d', length(res_lim.Cost));
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 24 passed: MaxIter limit (3 iters).\n');
 
 %% Test 25: Rank-deficient square H forces EM path (SPEC §8.12.3)
@@ -906,6 +931,7 @@ end
 res_rd = sidLTVdiscIO(Y25, U25, H_rd, 'Lambda', 1e4, 'MaxIter', 10);
 assert(res_rd.Iterations > 0, ...
     'Rank-deficient square H should use EM, got 0 iters');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 25 passed: rank-deficient square H forces EM (%d iters).\n', ...
     res_rd.Iterations);
 
@@ -931,6 +957,7 @@ Sig26d = res26d.NoiseCov;
 offDiag26d = Sig26d - diag(diag(Sig26d));
 assert(max(abs(offDiag26d(:))) < 1e-15, ...
     'Diagonal mode should produce diagonal NoiseCov');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 26 passed: CovarianceMode diagonal.\n');
 
 %% Test 27: CovarianceMode option — full
@@ -940,6 +967,7 @@ Sig26f = res26f.NoiseCov;
 assert(isequal(size(Sig26f), [n26, n26]), 'Full mode NoiseCov dims');
 % Full mode may have off-diagonals (no assertion on zeros)
 assert(all(isfinite(Sig26f(:))), 'Full mode NoiseCov should be finite');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 27 passed: CovarianceMode full.\n');
 
 %% Test 28: CovarianceMode option — isotropic
@@ -951,6 +979,7 @@ assert(abs(Sig26i(1,1) - Sig26i(2,2)) < 1e-15, ...
 offDiag26i = Sig26i - diag(diag(Sig26i));
 assert(max(abs(offDiag26i(:))) < 1e-15, ...
     'Isotropic mode should be scalar * I');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 28 passed: CovarianceMode isotropic.\n');
 
 %% Test 29: Invalid CovarianceMode errors
@@ -963,6 +992,7 @@ catch e
         'Expected sid:badCovMode error, got %s', e.identifier);
 end
 assert(threw, 'Invalid CovarianceMode should throw an error');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 29 passed: invalid CovarianceMode throws error.\n');
 
-fprintf('test_sidLTVdiscIO: all tests passed.\n');
+fprintf('test_sidLTVdiscIO: %d/%d passed\n', runner__nPassed, runner__nPassed);

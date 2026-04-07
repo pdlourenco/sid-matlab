@@ -4,6 +4,7 @@
 % time-varying behavior, and uncertainty propagation.
 
 fprintf('Running test_sidLTVdiscFrozen...\n');
+runner__nPassed = 0;
 
 %% Test 1: Result struct fields and dimensions
 rng(2001);
@@ -34,6 +35,7 @@ assert(isequal(size(frz.Response), [nf, p, q, nk]), ...
     'Response should be (nf x p x q x nk)');
 assert(isequal(size(frz.ResponseStd), [nf, p, q, nk]), ...
     'ResponseStd should be (nf x p x q x nk)');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 1 passed: result struct fields and dimensions.\n');
 
 %% Test 2: Custom frequencies and time steps
@@ -43,6 +45,7 @@ frz2 = sidLTVdiscFrozen(ltv, 'Frequencies', w, 'TimeSteps', kVec);
 assert(isequal(size(frz2.Response), [50, p, q, 3]), 'Custom dims');
 assert(isequal(frz2.TimeSteps, kVec'), 'TimeSteps stored');
 assert(max(abs(frz2.Frequency - w)) < 1e-15, 'Frequencies stored');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 2 passed: custom frequencies and time steps.\n');
 
 %% Test 3: LTI frozen TF matches analytic
@@ -71,6 +74,7 @@ for iw = 1:length(w)
     maxErr = max(maxErr, err);
 end
 assert(maxErr < 0.02, 'LTI frozen TF should match analytic (maxErr=%.4f)', maxErr);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 3 passed: LTI frozen TF matches analytic (maxErr=%.4f).\n', maxErr);
 
 %% Test 4: Time-varying response changes across time steps
@@ -94,6 +98,7 @@ dcGain = abs(squeeze(frz.Response(1, 1, 1, :)));
 corrMat = corrcoef(dcGain, A_seq);
 assert(corrMat(1, 2) > 0.8, ...
     'DC gain should correlate with A(k) ramp (corr=%.3f)', corrMat(1, 2));
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 4 passed: time-varying DC gain tracks A(k) ramp (corr=%.3f).\n', corrMat(1, 2));
 
 %% Test 5: Uncertainty propagation produces finite positive std
@@ -112,12 +117,14 @@ frz = sidLTVdiscFrozen(ltv);
 
 assert(all(frz.ResponseStd(:) > 0), 'ResponseStd should be positive');
 assert(all(isfinite(frz.ResponseStd(:))), 'ResponseStd should be finite');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 5 passed: uncertainty propagation gives finite positive std.\n');
 
 %% Test 6: No uncertainty -> ResponseStd is empty
 ltv_no_unc = sidLTVdisc(X, U, 'Lambda', 1e4);
 frz_no = sidLTVdiscFrozen(ltv_no_unc);
 assert(isempty(frz_no.ResponseStd), 'ResponseStd should be empty without uncertainty');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 6 passed: no uncertainty -> empty ResponseStd.\n');
 
 %% Test 7: SampleTime affects FrequencyHz
@@ -126,6 +133,7 @@ w_default = frz_ts.Frequency;
 expected_hz = w_default / (2 * pi * 0.01);
 assert(max(abs(frz_ts.FrequencyHz - expected_hz)) < 1e-12, ...
     'FrequencyHz should be w / (2*pi*Ts)');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 7 passed: SampleTime affects FrequencyHz correctly.\n');
 
 %% Test 8: Exact variance formula matches brute-force Kronecker product
@@ -201,7 +209,8 @@ for ik = 1:2
 end
 assert(maxRelErr < 1e-10, ...
     'Exact formula should match brute-force (maxRelErr=%.2e)', maxRelErr);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 8 passed: exact variance matches brute-force Kronecker (maxRelErr=%.2e).\n', ...
     maxRelErr);
 
-fprintf('test_sidLTVdiscFrozen: ALL TESTS PASSED\n');
+fprintf('test_sidLTVdiscFrozen: %d/%d passed\n', runner__nPassed, runner__nPassed);

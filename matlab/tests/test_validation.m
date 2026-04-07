@@ -4,6 +4,7 @@
 % identification theory (Ljung, 1999).
 
 fprintf('Running test_validation...\n');
+runner__nPassed = 0;
 
 %% Test 1: White noise auto-spectrum = variance (BT method)
 % For white noise with variance sigma^2, the power spectrum is sigma^2
@@ -17,6 +18,8 @@ Phi = result.NoiseSpectrum;
 expected = sigma^2;
 relErr = max(abs(Phi - expected)) / expected;
 assert(relErr < 0.10, 'White noise spectrum should be ~sigma^2 (relErr=%.3f)', relErr);
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 1 passed: white noise auto-spectrum = variance (BT method).\n');
 
 %% Test 2: Sinusoidal signal has peak at correct frequency
 % x(t) = cos(w0*t), spectrum should peak at w0
@@ -28,6 +31,8 @@ result = sidFreqBT(x, [], 'WindowSize', 100);
 [~, idx_peak] = max(result.NoiseSpectrum);
 w_peak = result.Frequency(idx_peak);
 assert(abs(w_peak - w0) < pi/128, 'Spectrum peak should be at w0=pi/4 (found %.3f)', w_peak);
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 2 passed: sinusoidal signal has peak at correct frequency.\n');
 
 %% Test 3: Known first-order system G(z) = 1/(1 - a*z^{-1})
 % Magnitude: |G(e^{jw})| = 1/|1 - a*e^{-jw}|
@@ -51,6 +56,8 @@ phase_err = min(phase_err, 2*pi - phase_err);
 assert(median(phase_err) < 0.05, ...
     'Median phase error should be <0.05 rad (got %.3f)', ...
     median(phase_err));
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 3 passed: known first-order system G(z) = 1/(1 - a*z^{-1}).\n');
 
 %% Test 4: FIR system G(z) = 1 + 0.5*z^{-1}
 % |G(e^{jw})| = |1 + 0.5*e^{-jw}|
@@ -66,6 +73,8 @@ mag_err = abs(abs(result.Response) - abs(G_true)) ./ abs(G_true);
 assert(median(mag_err) < 0.03, ...
     'FIR magnitude error should be small (got %.1f%%)', ...
     median(mag_err)*100);
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 4 passed: FIR system G(z) = 1 + 0.5*z^{-1}.\n');
 
 %% Test 5: Noise variance estimation consistency
 % y = G*u + v, noise variance sigma_v^2 should be recoverable
@@ -79,6 +88,8 @@ result = sidFreqBT(y, u, 'WindowSize', 50);
 mean_noise = mean(result.NoiseSpectrum);
 assert(abs(mean_noise - sigma_v^2) / sigma_v^2 < 0.20, ...
     'Average noise spectrum should be ~sigma_v^2 (got %.3f vs %.3f)', mean_noise, sigma_v^2);
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 5 passed: noise variance estimation consistency.\n');
 
 %% Test 6: Coherence approaches 1 for low-noise systems
 rng(4);
@@ -88,6 +99,8 @@ y = filter(1, [1 -0.9], u) + 0.01 * randn(N, 1);  % Very low noise
 result = sidFreqBT(y, u, 'WindowSize', 50);
 assert(median(result.Coherence) > 0.95, ...
     'Coherence should be ~1 for low-noise system (got %.3f)', median(result.Coherence));
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 6 passed: coherence approaches 1 for low-noise systems.\n');
 
 %% Test 7: Coherence decreases with more noise
 rng(4);
@@ -99,6 +112,8 @@ result_lo = sidFreqBT(y_lo, u, 'WindowSize', 30);
 result_hi = sidFreqBT(y_hi, u, 'WindowSize', 30);
 assert(median(result_lo.Coherence) > median(result_hi.Coherence), ...
     'More noise should reduce coherence');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 7 passed: coherence decreases with more noise.\n');
 
 %% Test 8: ETFE of noiseless system should be exact (within numerical precision)
 rng(5);
@@ -108,6 +123,8 @@ y = 3 * u;  % G = 3
 result = sidFreqETFE(y, u);
 G_mag = abs(result.Response);
 assert(max(abs(G_mag - 3)) < 1e-8, 'ETFE of noiseless gain=3 should be exact');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 8 passed: ETFE of noiseless system should be exact.\n');
 
 %% Test 9: Parseval-like check for periodogram
 % For ETFE periodogram: mean(Phi_y) * pi ≈ (1/N) * sum(y^2) * (2*pi/N) ... approximately
@@ -126,6 +143,8 @@ sample_var = mean(y.^2);  % Biased variance (mean not subtracted for DFT)
 % This is an approximation; check within 20%
 relErr = abs(integral_approx - sample_var) / sample_var;
 assert(relErr < 0.3, 'Periodogram integral should approximate variance (relErr=%.2f)', relErr);
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 9 passed: Parseval-like check for periodogram.\n');
 
 %% Test 10: Uncertainty decreases with window size (BT)
 rng(7);
@@ -138,6 +157,8 @@ result_large = sidFreqBT(y, u, 'WindowSize', 50);
 % But also smoother estimates. Check that std values differ.
 assert(mean(result_large.ResponseStd) > mean(result_small.ResponseStd) * 0.5, ...
     'Uncertainty should be related to window size');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 10 passed: uncertainty decreases with window size (BT).\n');
 
 %% Test 11: Constant signal has zero-lag variance only
 y_const = 5 * ones(100, 1);
@@ -151,5 +172,7 @@ for tau = 0:5
         'Biased cov of constant at lag %d should be %.2f', ...
         tau, expected);
 end
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 11 passed: constant signal has zero-lag variance only.\n');
 
-fprintf('  test_validation: ALL PASSED\n');
+fprintf('test_validation: %d/%d passed\n', runner__nPassed, runner__nPassed);

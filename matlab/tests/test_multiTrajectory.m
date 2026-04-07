@@ -5,6 +5,7 @@
 % ensemble averaging of covariances/periodograms across trajectories.
 
 fprintf('Running test_multiTrajectory...\n');
+runner__nPassed = 0;
 
 %% Test 1: sidFreqBT multi-trajectory produces valid output
 rng(3001);
@@ -23,6 +24,7 @@ assert(r.NumTrajectories == L, 'NumTrajectories should be %d, got %d', L, r.NumT
 assert(all(isfinite(r.Response)), 'Response should be finite');
 assert(all(isfinite(r.ResponseStd)), 'ResponseStd should be finite');
 assert(all(r.ResponseStd > 0), 'ResponseStd should be positive');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 1 passed: sidFreqBT multi-trajectory produces valid output.\n');
 
 %% Test 2: Variance reduction — multi-trajectory std ≈ single-trajectory std / sqrt(L)
@@ -44,6 +46,7 @@ expected_ratio = 1 / sqrt(L);
 actual_ratio = median(r_multi.ResponseStd ./ r_single.ResponseStd);
 assert(abs(actual_ratio - expected_ratio) < 0.05, ...
     'Variance reduction: expected ratio %.3f, got %.3f', expected_ratio, actual_ratio);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 2 passed: variance reduction ratio = %.3f (expected %.3f).\n', ...
     actual_ratio, expected_ratio);
 
@@ -61,6 +64,7 @@ end
 r = sidFreqETFE(y3, u3, 'Smoothing', 5);
 assert(r.NumTrajectories == L, 'ETFE NumTrajectories should be %d', L);
 assert(all(isfinite(r.Response)), 'ETFE Response should be finite');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 3 passed: sidFreqETFE multi-trajectory produces valid output.\n');
 
 %% Test 4: sidFreqMap multi-trajectory produces valid output
@@ -77,6 +81,7 @@ end
 r = sidFreqMap(y3, u3, 'SegmentLength', 500);
 assert(r.NumTrajectories == L, 'FreqMap NumTrajectories should be %d', L);
 assert(all(isfinite(r.Response(:))), 'FreqMap Response should be finite');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 4 passed: sidFreqMap multi-trajectory produces valid output.\n');
 
 %% Test 5: sidSpectrogram multi-trajectory produces valid output
@@ -88,6 +93,7 @@ r = sidSpectrogram(x3, 'WindowLength', 128);
 assert(r.NumTrajectories == L, 'Spectrogram NumTrajectories should be %d', L);
 assert(all(isfinite(r.Power(:))), 'Spectrogram Power should be finite');
 assert(all(r.Power(:) >= 0), 'Spectrogram Power should be non-negative');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 5 passed: sidSpectrogram multi-trajectory produces valid output.\n');
 
 %% Test 6: Spectrogram ensemble PSD has lower variance than single trajectory
@@ -105,6 +111,7 @@ psd_single_var = var(r_single.Power(:, round(end/2), 1));
 assert(psd_multi_var < psd_single_var, ...
     'Ensemble spectrogram should have lower variance (multi=%.4e, single=%.4e)', ...
     psd_multi_var, psd_single_var);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 6 passed: ensemble spectrogram has lower PSD variance.\n');
 
 %% Test 7: Backward compatibility — single trajectory gives same result as 2D input
@@ -123,6 +130,7 @@ assert(max(abs(r_2d.Response - r_3d.Response)) < 1e-12, ...
 assert(max(abs(r_2d.ResponseStd - r_3d.ResponseStd)) < 1e-12, ...
     'Single trajectory 3D std should match 2D exactly');
 assert(r_3d.NumTrajectories == 1, 'NumTrajectories should be 1 for single');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 7 passed: backward compatibility (2D = single 3D).\n');
 
 %% Test 8: Time-series (output-only) multi-trajectory
@@ -138,6 +146,7 @@ assert(r.NumTrajectories == L, 'Time-series NumTrajectories should be %d', L);
 assert(isempty(r.Response), 'Time-series Response should be empty');
 assert(all(isfinite(r.NoiseSpectrum)), 'Time-series NoiseSpectrum should be finite');
 assert(all(r.NoiseSpectrum > 0), 'Time-series NoiseSpectrum should be positive');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 8 passed: time-series multi-trajectory works.\n');
 
-fprintf('  test_multiTrajectory: ALL PASSED\n');
+fprintf('test_multiTrajectory: %d/%d passed\n', runner__nPassed, runner__nPassed);
