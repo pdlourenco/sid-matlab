@@ -366,6 +366,85 @@ def load_reference(name: str) -> dict:
 
 ---
 
+## Examples (Jupyter Notebooks)
+
+Examples live in `python/examples/` as **Jupyter notebooks** (`.ipynb`). Each
+MATLAB example script (`matlab/examples/example*.m`) maps to one notebook.
+Notebooks are the Python equivalent of MATLAB's `%%`-sectioned scripts — they
+combine narrative, code, and inline plots in a single runnable document.
+
+### Naming convention
+
+| MATLAB example | Python notebook |
+|---|---|
+| `exampleSISO.m` | `example_siso.ipynb` |
+| `exampleFreqMap.m` | `example_freq_map.ipynb` |
+| `exampleLTVdisc.m` | `example_ltv_disc.ipynb` |
+| `exampleOutputCOSMIC.m` | `example_output_cosmic.ipynb` |
+
+Pattern: drop the `example` prefix camelCase, convert to `example_snake_case.ipynb`.
+
+### Auto-discovery
+
+The example runner and CI discover notebooks by globbing `example_*.ipynb`
+in `python/examples/`. **Do not add entries to a hardcoded list** — it defeats
+auto-discovery and creates merge conflicts. This mirrors the MATLAB convention
+where `runAllExamples.m` uses `dir('example*.m')`.
+
+### Notebook structure
+
+Each notebook should:
+
+1. **Title cell** (Markdown) — `# Example: <title>` and a one-paragraph
+   description matching the MATLAB example's `%%` header comment.
+
+2. **Setup cell** — imports and `%matplotlib inline`:
+
+   ```python
+   import numpy as np
+   import sid
+
+   %matplotlib inline
+   ```
+
+3. **One code cell per MATLAB `%%` section** — mirror the MATLAB structure
+   section by section. Use Markdown cells between code cells for narrative
+   (replacing MATLAB `%%` section comments and `%` inline explanations).
+
+4. **Self-contained** — every notebook must run top-to-bottom without external
+   data files. All data is generated inline (matching the MATLAB examples).
+
+5. **No output committed** — clear all cell outputs before committing. CI
+   validates that notebooks execute without error, but stored outputs bloat
+   the repository and cause noisy diffs.
+
+### Porting checklist (per notebook)
+
+When porting a MATLAB example to a notebook:
+
+1. Read the MATLAB example from top to bottom.
+2. Create the notebook with matching sections.
+3. Translate MATLAB code to Python, using the ported `sid.*` functions.
+4. Replace MATLAB plotting idioms (`figure; hold on; semilogx; ...`) with
+   matplotlib equivalents or `sid.*_plot()` functions.
+5. Add Markdown narrative explaining what each section does.
+6. Run the full notebook to verify it executes cleanly.
+7. Clear outputs, then commit.
+
+### CI validation
+
+Notebooks are validated in CI using `pytest --nbmake python/examples/` to
+ensure they execute without errors. Only execution is checked — output cell
+content is not asserted.
+
+### `python/examples/README.md`
+
+Maintain an `examples/README.md` with an index table and per-notebook
+descriptions, mirroring `matlab/examples/README.md`. The table should list
+notebook name, description, and which `sid` functions are demonstrated.
+
+---
+
 ## Porting Workflow
 
 When porting a MATLAB function to Python, follow this order:
@@ -395,6 +474,7 @@ When porting a MATLAB function to Python, follow this order:
 |---------|---------|------|
 | numpy | >= 1.22 | Array operations, FFT |
 | scipy | >= 1.8 | Linear algebra, signal processing |
-| matplotlib | >= 3.5 | Plotting (optional) |
+| matplotlib | >= 3.5 | Plotting (optional; required for examples) |
 | pytest | >= 7.0 | Testing (dev only) |
+| nbmake | >= 1.0 | Notebook execution testing (dev only) |
 | ruff | latest | Linting and formatting (dev only) |

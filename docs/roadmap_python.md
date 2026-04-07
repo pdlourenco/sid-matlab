@@ -122,6 +122,19 @@ python/
 │       ├── estimate_noise_cov.py
 │       ├── extract_std.py
 │       └── freq_domain_sim.py
+├── examples/
+│   ├── README.md                    # Example index and descriptions
+│   ├── example_siso.ipynb           # Basic SISO frequency response
+│   ├── example_etfe.ipynb           # Empirical transfer function estimate
+│   ├── example_freq_dep_res.ipynb   # Frequency-dependent resolution
+│   ├── example_coherence.ipynb      # Coherence analysis
+│   ├── example_method_comparison.ipynb  # BT vs BTFDR vs ETFE
+│   ├── example_mimo.ipynb           # Multi-input multi-output
+│   ├── example_freq_map.ipynb       # Time-varying frequency response
+│   ├── example_spectrogram.ipynb    # Short-time FFT spectrogram
+│   ├── example_ltv_disc.ipynb       # LTV state-space (COSMIC)
+│   ├── example_multi_trajectory.ipynb   # Multi-trajectory ensemble averaging
+│   └── example_output_cosmic.ipynb  # Partial-observation Output-COSMIC
 └── tests/
     ├── conftest.py
     ├── test_hann_win.py
@@ -354,6 +367,40 @@ keyword argument for embedding in user-created figures.
 | 10.3 | `sidMapPlot.m` | `map_plot.py` | `test_plotting.py` |
 | 10.4 | `sidSpectrogramPlot.m` | `spectrogram_plot.py` | `test_plotting.py` |
 
+### Phase P10a — Examples (Jupyter Notebooks) ⬜
+
+Each MATLAB example script is ported to a Jupyter notebook in `python/examples/`.
+Notebooks are the natural Python equivalent of MATLAB's `%%`-sectioned scripts:
+they combine narrative, code, and inline plots in a single runnable document.
+
+**Example catalog:**
+
+| MATLAB example | Python notebook | Functions demonstrated | Depends on |
+|---|---|---|---|
+| `exampleSISO.m` | `example_siso.ipynb` | `freq_bt`, `bode_plot`, `spectrum_plot` | P2, P10 |
+| `exampleETFE.m` | `example_etfe.ipynb` | `freq_etfe`, `bode_plot`, `spectrum_plot` | P5, P10 |
+| `exampleFreqDepRes.m` | `example_freq_dep_res.ipynb` | `freq_btfdr`, `freq_bt`, `bode_plot` | P5, P10 |
+| `exampleCoherence.m` | `example_coherence.ipynb` | `freq_bt`, `bode_plot` | P2, P10 |
+| `exampleMethodComparison.m` | `example_method_comparison.ipynb` | `freq_bt`, `freq_btfdr`, `freq_etfe` | P5, P10 |
+| `exampleMIMO.m` | `example_mimo.ipynb` | `freq_bt` (MIMO mode) | P3, P10 |
+| `exampleFreqMap.m` | `example_freq_map.ipynb` | `freq_map`, `map_plot` | P6, P10 |
+| `exampleSpectrogram.m` | `example_spectrogram.ipynb` | `spectrogram`, `spectrogram_plot` | P6, P10 |
+| `exampleLTVdisc.m` | `example_ltv_disc.ipynb` | `ltv_disc`, `ltv_disc_tune`, `ltv_disc_frozen` | P7c, P10 |
+| `exampleMultiTrajectory.m` | `example_multi_trajectory.ipynb` | `freq_bt`, `freq_map`, `spectrogram`, `ltv_disc` | P4, P6, P7 |
+| `exampleOutputCOSMIC.m` | `example_output_cosmic.ipynb` | `freq_bt`, `model_order`, `ltv_disc_io` | P8, P10 |
+
+**Notebook conventions:**
+- One notebook per MATLAB example, mirroring its structure section by section
+- Markdown cells for narrative (replacing MATLAB `%%` section comments)
+- Each code cell corresponds to one MATLAB `%%` section
+- Inline plots via `%matplotlib inline` (no `figure;` / `hold on` boilerplate)
+- All notebooks can be run top-to-bottom without external data files
+- `python/examples/README.md` provides the index and descriptions
+
+**CI validation:**
+- Notebooks are validated using `nbval` or `pytest --nbmake` in CI to ensure
+  they execute without errors (output cells are not checked, only execution)
+
 ### Phase P11 — Cross-Validation + CI ⬜
 
 - `python/tests/test_cross_validation.py` — load JSON from `testdata/`, call
@@ -373,6 +420,7 @@ P1 (scaffolding)
 │   ├── P5 (freq_etfe, freq_btfdr, detrend)
 │   │   └── P6 (spectrogram, freq_map)
 │   │       └── P10 (plotting)
+│   │           └── P10a (examples / notebooks)
 │   ├── P8 (Output-COSMIC) ←── also needs P7
 │   └── P9 (residual, compare) ←── also needs P7
 ├── P7 (ltv_disc core)
@@ -403,6 +451,7 @@ P1 (scaffolding)
 | P8 | Output-COSMIC | P2, P7 | ⬜ |
 | P9 | Workflow utilities | P2, P7 | ⬜ |
 | P10 | Plotting | P2, P6 | ⬜ |
+| P10a | Examples (Jupyter notebooks) | P10, varies per notebook | ⬜ |
 | P11 | Cross-validation + CI | all | ⬜ |
 
 ---
