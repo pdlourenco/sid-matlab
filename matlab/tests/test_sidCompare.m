@@ -1,6 +1,7 @@
 % test_sidCompare.m - Test model output comparison function
 
 fprintf('Running test_sidCompare...\n');
+runner__nPassed = 0;
 
 %% Test 1: Perfect state-space model → ~100% fit
 rng(7001);
@@ -28,6 +29,7 @@ assert(all(comp.Fit > 99), ...
     'Perfect model should give >99%% fit, got [%.1f, %.1f]', comp.Fit(1), comp.Fit(2));
 assert(isequal(size(comp.Predicted), [N, p]), 'Predicted should be N x p');
 assert(isequal(size(comp.Residual), [N, p]), 'Residual should be N x p');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 1 passed: perfect state-space model gives %.1f%% fit.\n', min(comp.Fit));
 
 %% Test 2: Frequency-domain model fit
@@ -41,6 +43,7 @@ comp = sidCompare(result, y, u);
 
 assert(comp.Fit > 50, 'Good freq-domain model should give >50%% fit, got %.1f%%', comp.Fit);
 assert(isequal(size(comp.Predicted), [N, 1]), 'Predicted should be N x 1');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 2 passed: frequency-domain model fit = %.1f%%.\n', comp.Fit);
 
 %% Test 3: State-space model on noisy validation data
@@ -60,6 +63,7 @@ ltv = sidLTVdisc(X, U, 'Lambda', 1e4);
 comp_ss = sidCompare(ltv, X, U);
 
 assert(all(comp_ss.Fit > 50), 'COSMIC model fit should be decent, got %.1f%%', min(comp_ss.Fit));
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 3 passed: COSMIC model on noisy data, fit = [%.1f%%, %.1f%%].\n', ...
     comp_ss.Fit(1), comp_ss.Fit(2));
 
@@ -76,6 +80,7 @@ comp_mimo = sidCompare(result_mimo, y, u);
 
 assert(length(comp_mimo.Fit) == 2, 'Should have per-channel fit');
 % Channel 1 (cleaner) should have better fit than channel 2 (noisier)
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 4 passed: multi-channel fit = [%.1f%%, %.1f%%].\n', ...
     comp_mimo.Fit(1), comp_mimo.Fit(2));
 
@@ -94,6 +99,7 @@ catch
     plotOk = false;
 end
 assert(plotOk, 'Plot option should not error');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 5 passed: plot option works.\n');
 
 %% Test 6: Output struct fields
@@ -110,6 +116,7 @@ assert(isfield(comp, 'Fit'), 'Should have Fit field');
 assert(isfield(comp, 'Residual'), 'Should have Residual field');
 assert(isfield(comp, 'Method'), 'Should have Method field');
 assert(strcmp(comp.Method, 'sidFreqBT'), 'Method should match source model');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 6 passed: output struct has correct fields.\n');
 
 %% Test 7: NRMSE formula verification (SPEC §15.3)
@@ -127,6 +134,7 @@ y_meas = comp_f.Measured;
 manual_fit = 100 * (1 - norm(y_meas - y_pred) / norm(y_meas - mean(y_meas)));
 assert(abs(comp_f.Fit - manual_fit) < 1e-8, ...
     'Fit=%.4f should match manual NRMSE=%.4f', comp_f.Fit, manual_fit);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 7 passed: NRMSE formula verified (fit=%.1f%%).\n', ...
     comp_f.Fit);
 
@@ -144,6 +152,7 @@ comp_wrong = sidCompare(result_wrong, y, u);
 % Fit can be negative when model is worse than predicting the mean
 assert(comp_wrong.Fit < 50, ...
     'Wrong model should give poor fit, got %.1f%%', comp_wrong.Fit);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 8 passed: poor model fit = %.1f%%.\n', comp_wrong.Fit);
 
 %% Test 9: NRMSE per channel for MIMO (SPEC §15.3)
@@ -171,6 +180,7 @@ for ch = 1:2
     assert(abs(comp_m.Fit(ch) - manual) < 1e-8, ...
         'Channel %d: Fit=%.4f != manual=%.4f', ch, comp_m.Fit(ch), manual);
 end
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 9 passed: per-channel NRMSE (%.1f%%, %.1f%%).\n', ...
     comp_m.Fit(1), comp_m.Fit(2));
 
@@ -204,7 +214,8 @@ comp_bad = sidCompare(model, X, U, 'InitialState', [0; 0]);
 % Wrong x0 should give worse fit (transient error)
 assert(all(comp_bad.Fit < comp_x0.Fit), ...
     'Wrong x0 should give worse fit');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 10 passed: InitialState parameter (%.1f%% vs %.1f%%).\n', ...
     min(comp_x0.Fit), min(comp_bad.Fit));
 
-fprintf('  test_sidCompare: ALL PASSED\n');
+fprintf('test_sidCompare: %d/%d passed\n', runner__nPassed, runner__nPassed);

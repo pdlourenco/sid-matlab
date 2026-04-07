@@ -6,6 +6,7 @@
 % various resolution settings, system configurations, and MIMO.
 
 fprintf('Running test_compareSpafdr...\n');
+runner__nPassed = 0;
 
 %% Toolbox check
 if ~exist('spafdr', 'file')
@@ -43,6 +44,8 @@ relErr_noise = median(abs(real(result_sid.NoiseSpectrum) - ...
     spec_spafdr) ./ max(abs(spec_spafdr), 1e-10));
 assert(relErr_noise < 0.10, ...
     'Test 1: noise spectrum median relErr=%.6f should be <10%%', relErr_noise);
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 1 passed: SISO first-order system, explicit resolution.\n');
 
 %% Test 2: Fine resolution (large window, low variance)
 rng(22);
@@ -62,6 +65,8 @@ resp_spafdr = squeeze(G_spafdr.ResponseData);
 relErr = median(abs(result_sid.Response - resp_spafdr) ./ max(abs(resp_spafdr), 1e-10));
 assert(relErr < 0.05, ...
     'Test 2: fine resolution response relErr=%.6f should be <5%%', relErr);
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 2 passed: fine resolution.\n');
 
 %% Test 3: Coarse resolution (small window, high smoothing)
 rng(23);
@@ -81,6 +86,8 @@ resp_spafdr = squeeze(G_spafdr.ResponseData);
 relErr = median(abs(result_sid.Response - resp_spafdr) ./ max(abs(resp_spafdr), 1e-10));
 assert(relErr < 0.05, ...
     'Test 3: coarse resolution response relErr=%.6f should be <5%%', relErr);
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 3 passed: coarse resolution.\n');
 
 %% Test 4: Time-series spectrum (explicit resolution to avoid default mismatch)
 rng(24);
@@ -100,6 +107,8 @@ spec_spafdr = real(squeeze(G_spafdr.SpectrumData));
 relErr = median(abs(real(result_sid.NoiseSpectrum) - spec_spafdr) ./ max(abs(spec_spafdr), 1e-10));
 assert(relErr < 0.10, ...
     'Test 4: time-series spectrum median relErr=%.6f should be <10%%', relErr);
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 4 passed: time-series spectrum.\n');
 
 %% Test 5: Per-frequency resolution vector
 rng(25);
@@ -120,6 +129,8 @@ resp_spafdr = squeeze(G_spafdr.ResponseData);
 relErr = median(abs(result_sid.Response - resp_spafdr) ./ max(abs(resp_spafdr), 1e-10));
 assert(relErr < 0.05, ...
     'Test 5: per-freq resolution response relErr=%.6f should be <5%%', relErr);
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 5 passed: per-frequency resolution vector.\n');
 
 %% Test 6: MIMO system (2 outputs, 2 inputs)
 rng(26);
@@ -147,6 +158,8 @@ for ii = 1:2
             'Test 6: MIMO(%d,%d) median relErr=%.6f should be <15%%', ii, jj, relErr);
     end
 end
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 6 passed: MIMO system.\n');
 
 %% Test 7: Non-unit sample time
 rng(27);
@@ -170,5 +183,7 @@ resp_spafdr = squeeze(G_spafdr.ResponseData);
 relErr = median(abs(result_sid.Response - resp_spafdr) ./ max(abs(resp_spafdr), 1e-10));
 assert(relErr < 0.05, ...
     'Test 7: non-unit Ts response relErr=%.6f should be <5%%', relErr);
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 7 passed: non-unit sample time.\n');
 
-fprintf('  test_compareSpafdr: ALL PASSED\n');
+fprintf('test_compareSpafdr: %d/%d passed\n', runner__nPassed, runner__nPassed);

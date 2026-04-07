@@ -4,6 +4,7 @@
 % custom grids, and consistency with sidLTVdisc.
 
 fprintf('Running test_sidLTVdiscTune...\n');
+runner__nPassed = 0;
 
 %% Helper: generate LTV data split into train/val
 % Use an LTV system so the bias-variance tradeoff in lambda is genuine:
@@ -46,6 +47,7 @@ assert(isscalar(bestLambda), 'bestLambda should be scalar');
 assert(bestLambda > 0, 'bestLambda should be positive');
 assert(isequal(size(allLosses), [15, 1]), 'allLosses should be (nGrid x 1)');
 assert(all(allLosses > 0), 'allLosses should be positive');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 1 passed: output shapes correct.\n');
 
 %% Test 2: bestResult has correct fields
@@ -53,6 +55,7 @@ assert(isfield(bestResult, 'A'), 'bestResult should have A');
 assert(isfield(bestResult, 'B'), 'bestResult should have B');
 assert(strcmp(bestResult.Method, 'sidLTVdisc'), 'bestResult.Method should be sidLTVdisc');
 assert(isequal(size(bestResult.A), [p, p, N]), 'bestResult.A dimensions');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 2 passed: bestResult has correct fields.\n');
 
 %% Test 3: Optimal lambda not at grid boundary
@@ -60,6 +63,7 @@ fprintf('  Test 2 passed: bestResult has correct fields.\n');
 [~, bestIdx] = min(allLosses);
 assert(bestIdx > 1 && bestIdx < length(grid), ...
     'Optimal lambda should not be at grid boundary (idx=%d/%d)', bestIdx, length(grid));
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 3 passed: optimal lambda is interior (idx=%d/%d).\n', bestIdx, length(grid));
 
 %% Test 4: Custom lambda grid with few points
@@ -68,6 +72,7 @@ grid_small = [1, 100, 10000];
     'LambdaGrid', grid_small);
 assert(length(losses2) == 3, 'allLosses should have 3 entries');
 assert(any(abs(bestLam2 - grid_small) < 1e-12), 'bestLambda should be from grid');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 4 passed: custom grid works.\n');
 
 %% Test 5: Consistency with sidLTVdisc
@@ -77,6 +82,7 @@ assert(max(abs(bestResult.A(:) - check.A(:))) < 1e-10, ...
     'bestResult.A should match direct sidLTVdisc call');
 assert(max(abs(bestResult.B(:) - check.B(:))) < 1e-10, ...
     'bestResult.B should match direct sidLTVdisc call');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 5 passed: bestResult consistent with sidLTVdisc.\n');
 
 %% Test 6: Passthrough of Precondition option (not_implemented in v1.0)
@@ -88,9 +94,8 @@ warning('on', 'sid:preconditionUnsupported');
 assert(ischar(bestRes_pc.Preconditioned) && ...
     strcmp(bestRes_pc.Preconditioned, 'not_implemented'), ...
     'Precondition should be ''not_implemented'' when requested');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 6 passed: Precondition option forwarded, reports not_implemented.\n');
-
-fprintf('test_sidLTVdiscTune: ALL TESTS PASSED (validation method)\n');
 
 %% ====================================================================
 %  FREQUENCY-RESPONSE METHOD TESTS (Phase 8d)
@@ -120,6 +125,7 @@ assert(isfield(info_f, 'bestFraction'), 'info should have bestFraction');
 assert(isfield(info_f, 'freqMapResults'), 'info should have freqMapResults');
 assert(length(info_f.fractions) == length(grid_freq), 'fractions length should match grid');
 assert(all(info_f.fractions >= 0 & info_f.fractions <= 1), 'fractions should be in [0,1]');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 7 passed: frequency method produces valid output.\n');
 
 %% Test 8: LTI system -> large lambda selected
@@ -143,6 +149,7 @@ grid_lti = logspace(1, 10, 15);
 midGrid = sqrt(grid_lti(1) * grid_lti(end));
 assert(bestLam_lti >= midGrid, ...
     'LTI system: bestLambda=%.2e should be >= midGrid=%.2e', bestLam_lti, midGrid);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 8 passed: LTI system selects large lambda (%.2e).\n', bestLam_lti);
 
 %% Test 9: LTV system -> moderate lambda (not extreme)
@@ -167,6 +174,7 @@ grid_ltv = logspace(0, 10, 20);
 % LTV: lambda should be moderate (not at extremes)
 assert(bestLam_ltv > grid_ltv(1), 'LTV: lambda should be > smallest candidate');
 assert(bestLam_ltv < grid_ltv(end), 'LTV: lambda should be < largest candidate');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 9 passed: LTV system selects moderate lambda (%.2e).\n', bestLam_ltv);
 
 %% Test 10: Fallback when threshold is very restrictive
@@ -182,6 +190,7 @@ lastwarn('');  % clear last warning
 assert(isfield(info_strict, 'bestFraction'), 'info should have bestFraction');
 assert(info_strict.bestFraction >= 0 && info_strict.bestFraction <= 1, ...
     'bestFraction should be in [0, 1]');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 10 passed: fallback with strict threshold (frac=%.3f).\n', ...
     info_strict.bestFraction);
 
@@ -193,6 +202,7 @@ assert(abs(bestLam_compat - bestLambda) < 1e-12, ...
     'Explicit Method=validation should match default');
 assert(max(abs(losses_compat - allLosses)) < 1e-12, ...
     'Validation losses should match exactly');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 11 passed: backward compatibility confirmed.\n');
 
 %% Test 12: Fractions are in valid range
@@ -200,6 +210,7 @@ fprintf('  Test 11 passed: backward compatibility confirmed.\n');
 % at every lambda), so we only check the valid range [0, 1].
 assert(any(info_f.fractions > 0), 'At least some fractions should be > 0');
 assert(all(info_f.fractions >= 0 & info_f.fractions <= 1), 'All fractions should be in [0, 1]');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 12 passed: fractions are in valid range.\n');
 
-fprintf('test_sidLTVdiscTune: ALL TESTS PASSED (validation + frequency)\n');
+fprintf('test_sidLTVdiscTune: %d/%d passed\n', runner__nPassed, runner__nPassed);

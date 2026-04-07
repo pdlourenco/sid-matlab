@@ -5,6 +5,7 @@
 % full and partial observation, constant and time-varying dynamics.
 
 fprintf('Running test_sidLTVStateEst...\n');
+runner__nPassed = 0;
 
 %% Test 1: Double integrator, full observation, noiseless
 % With H = I and exact dynamics, the estimator should recover
@@ -38,6 +39,7 @@ X_hat = sidLTVStateEst(Y_di, U_di, A_rep, B_rep, H_full);
 err = norm(X_hat - X_true, 'fro') / norm(X_true, 'fro');
 assert(err < 1e-6, ...
     'Double integrator full obs: error %.2e', err);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 1 passed: DI full obs (err=%.2e).\n', err);
 
 %% Test 2: Double integrator, partial obs (position only), noiseless
@@ -54,6 +56,7 @@ assert(pos_err < 1e-3, ...
     'DI partial obs: position error %.4f', pos_err);
 assert(vel_err < 0.05, ...
     'DI partial obs: velocity error %.4f', vel_err);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 2 passed: DI partial obs (pos=%.4f, vel=%.4f).\n', ...
     pos_err, vel_err);
 
@@ -85,6 +88,7 @@ X_hat = sidLTVStateEst( ...
 err = norm(X_hat - X_true, 'fro') / norm(X_true, 'fro');
 assert(err < 1e-4, ...
     'MSD full obs: error %.2e', err);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 3 passed: MSD full obs (err=%.2e).\n', err);
 
 %% Test 4: Mass-spring-damper, partial obs (positions only)
@@ -103,6 +107,7 @@ assert(pos_err < 0.01, ...
     'MSD partial obs: position error %.4f', pos_err);
 assert(vel_err < 0.1, ...
     'MSD partial obs: velocity error %.4f', vel_err);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 4 passed: MSD partial obs (pos=%.4f, vel=%.4f).\n', ...
     pos_err, vel_err);
 
@@ -127,6 +132,7 @@ assert(pos_err < 0.1, ...
     'MSD noisy: position error %.4f', pos_err);
 assert(vel_err < 0.3, ...
     'MSD noisy: velocity error %.4f', vel_err);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 5 passed: MSD noisy (pos=%.4f, vel=%.4f).\n', ...
     pos_err, vel_err);
 
@@ -165,6 +171,7 @@ assert(pos_err < 0.01, ...
     'TV DI partial obs: position error %.4f', pos_err);
 assert(vel_err < 0.1, ...
     'TV DI partial obs: velocity error %.4f', vel_err);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 6 passed: TV DI partial obs (pos=%.4f, vel=%.4f).\n', ...
     pos_err, vel_err);
 
@@ -202,6 +209,7 @@ pos_ref = X_true(:, 1:3, :);
 pos_err = norm(pos_diff(:)) / norm(pos_ref(:));
 assert(pos_err < 0.01, ...
     'Multi-traj: position error %.4f', pos_err);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 7 passed: multi-traj MSD (pos=%.4f).\n', ...
     pos_err);
 
@@ -242,6 +250,7 @@ for l = 1:L
     errXl = norm(X_cell{l} - X_3d(:, :, l));
     assert(errXl < 1e-8, 'Cell vs 3D: X{%d} mismatch %.2e', l, errXl);
 end
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 8 passed: cell matches 3D.\n');
 
 %% Test 9: Variable-length cell input
@@ -287,6 +296,7 @@ for l = 1:L
     assert(errY < 0.15, ...
         'VarLen: Y reconstruction error %.4f for traj %d', errY, l);
 end
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 9 passed: variable-length cell input.\n');
 
 %% Test 10: Non-trivial Q weighting (SPEC §8.12.13)
@@ -322,6 +332,7 @@ err_smallQ = norm(X_smallQ(:) - Y10(:)) / norm(Y10(:));
 assert(err_largeQ < err_smallQ, ...
     'Large Q (%.4f) should track measurements closer than small Q (%.4f)', ...
     err_largeQ, err_smallQ);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 10 passed: Q weighting effect (large=%.4f, small=%.4f).\n', ...
     err_largeQ, err_smallQ);
 
@@ -350,6 +361,7 @@ X_explicit = sidLTVStateEst(Y11, U11, A11, B11, H11, ...
 errD = norm(X_default(:) - X_explicit(:));
 assert(errD < 1e-12, ...
     'Default R=I,Q=I should match explicit: %.2e', errD);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 11 passed: default params match explicit.\n');
 
-fprintf('test_sidLTVStateEst: all tests passed.\n');
+fprintf('test_sidLTVStateEst: %d/%d passed\n', runner__nPassed, runner__nPassed);

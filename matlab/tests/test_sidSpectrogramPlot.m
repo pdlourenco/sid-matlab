@@ -4,6 +4,7 @@
 % Uses headless mode fallback for CI environments.
 
 fprintf('Running test_sidSpectrogramPlot...\n');
+runner__nPassed = 0;
 
 %% Setup: create test result struct
 rng(42);
@@ -17,6 +18,7 @@ try
     assert(isfield(h, 'ax'), 'Should have ax handle');
     assert(isfield(h, 'surf'), 'Should have surf handle');
     close(h.fig);
+    runner__nPassed = runner__nPassed + 1;
     fprintf('  Test 1 passed: basic call\n');
 catch e
     if contains(e.message, 'figure') || contains(e.message, 'display') ...
@@ -31,6 +33,7 @@ end
 try
     h = sidSpectrogramPlot(result, 'FrequencyScale', 'log');
     close(h.fig);
+    runner__nPassed = runner__nPassed + 1;
     fprintf('  Test 2 passed: log frequency scale\n');
 catch e
     if contains(e.message, 'figure') || contains(e.message, 'display') ...
@@ -45,6 +48,7 @@ end
 try
     h = sidSpectrogramPlot(result, 'CLim', [-60 0]);
     close(h.fig);
+    runner__nPassed = runner__nPassed + 1;
     fprintf('  Test 3 passed: custom CLim\n');
 catch e
     if contains(e.message, 'figure') || contains(e.message, 'display') ...
@@ -59,6 +63,7 @@ end
 try
     h = sidSpectrogramPlot(result_mc, 'Channel', 2);
     close(h.fig);
+    runner__nPassed = runner__nPassed + 1;
     fprintf('  Test 4 passed: multi-channel, channel 2\n');
 catch e
     if contains(e.message, 'figure') || contains(e.message, 'display') ...
@@ -75,6 +80,7 @@ try
     error('Should have thrown sid:invalidResult');
 catch e
     if strcmp(e.identifier, 'sid:invalidResult')
+        runner__nPassed = runner__nPassed + 1;
         fprintf('  Test 5 passed: error on invalid result\n');
     elseif contains(e.message, 'figure') || contains(e.message, 'display') ...
             || contains(e.message, 'DISPLAY') || contains(e.message, 'java')
@@ -90,6 +96,7 @@ try
     error('Should have thrown sid:invalidChannel');
 catch e
     if strcmp(e.identifier, 'sid:invalidChannel')
+        runner__nPassed = runner__nPassed + 1;
         fprintf('  Test 6 passed: error on invalid channel\n');
     elseif contains(e.message, 'figure') || contains(e.message, 'display') ...
             || contains(e.message, 'DISPLAY') || contains(e.message, 'java')
@@ -99,4 +106,4 @@ catch e
     end
 end
 
-fprintf('test_sidSpectrogramPlot: ALL TESTS PASSED\n');
+fprintf('test_sidSpectrogramPlot: %d/%d passed\n', runner__nPassed, runner__nPassed);

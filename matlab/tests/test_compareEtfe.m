@@ -7,6 +7,7 @@
 % is compared since sid and MATLAB use different smoothing windows.
 
 fprintf('Running test_compareEtfe...\n');
+runner__nPassed = 0;
 
 %% Toolbox check
 if ~exist('etfe', 'file')
@@ -33,6 +34,8 @@ result_sid = sidFreqETFE(y, u, 'Frequencies', w_etfe);
 relErr = max(abs(result_sid.Response - resp_etfe) ./ max(abs(resp_etfe), 1e-10));
 assert(relErr < 0.01, ...
     'Test 1: SISO response relErr=%.6f should be <1%%', relErr);
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 1 passed: SISO first-order system.\n');
 
 %% Test 2: Noiseless first-order system (should match very closely)
 rng(12);
@@ -50,6 +53,8 @@ result_sid = sidFreqETFE(y, u, 'Frequencies', w_etfe);
 relErr = max(abs(result_sid.Response - resp_etfe) ./ max(abs(resp_etfe), 1e-10));
 assert(relErr < 0.01, ...
     'Test 2: noiseless response relErr=%.6f should be <1%%', relErr);
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 2 passed: noiseless first-order system.\n');
 
 %% Test 3: Time-series periodogram
 rng(13);
@@ -70,6 +75,8 @@ assert(relErr < 0.01, ...
     'Test 3: periodogram relErr=%.6f should be <1%%', relErr);
 
 assert(isempty(result_sid.Response), 'Test 3: time-series Response should be empty');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 3 passed: time-series periodogram.\n');
 
 %% Test 4: FIR system
 rng(14);
@@ -88,6 +95,8 @@ result_sid = sidFreqETFE(y, u, 'Frequencies', w_etfe);
 relErr = max(abs(result_sid.Response - resp_etfe) ./ max(abs(resp_etfe), 1e-10));
 assert(relErr < 0.01, ...
     'Test 4: FIR response relErr=%.6f should be <1%%', relErr);
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 4 passed: FIR system.\n');
 
 %% Test 5: MIMO system (2 outputs, 1 input)
 rng(15);
@@ -111,6 +120,8 @@ for ch = 1:2
     assert(relErr < 0.01, ...
         'Test 5: MIMO channel %d response relErr=%.6f should be <1%%', ch, relErr);
 end
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 5 passed: MIMO system.\n');
 
 %% Test 6: Non-unit sample time
 rng(16);
@@ -134,5 +145,7 @@ resp_etfe = squeeze(G_etfe.ResponseData);
 relErr = max(abs(result_sid.Response - resp_etfe) ./ max(abs(resp_etfe), 1e-10));
 assert(relErr < 0.01, ...
     'Test 6: non-unit Ts response relErr=%.6f should be <1%%', relErr);
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 6 passed: non-unit sample time.\n');
 
-fprintf('  test_compareEtfe: ALL PASSED\n');
+fprintf('test_compareEtfe: %d/%d passed\n', runner__nPassed, runner__nPassed);

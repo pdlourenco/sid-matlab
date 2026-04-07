@@ -54,32 +54,24 @@ runner__passedCases = 0;
 
 try
     for runner__k = 1:runner__nFiles
+        % Each test file sets runner__nPassed via the template convention.
+        % Reset before each file so the workspace variable is clean.
+        runner__nPassed = 0;
         try
-            runner__out = evalc( ...
-                sprintf('run(''%s'')', ...
-                    fullfile(runner__thisDir, ...
-                        [runner__testFiles{runner__k} '.m'])));
-            fprintf('%s', runner__out);
+            run(fullfile(runner__thisDir, ...
+                [runner__testFiles{runner__k} '.m']));
             runner__filesPassed = runner__filesPassed + 1;
-            % Count individual test cases from "Test N passed" lines
-            runner__caseCount = length(regexp(runner__out, ...
-                'Test \d+ passed', 'match'));
-            runner__totalCases = runner__totalCases + runner__caseCount;
-            runner__passedCases = runner__passedCases + runner__caseCount;
+            runner__passedCases = runner__passedCases + runner__nPassed;
+            runner__totalCases  = runner__totalCases  + runner__nPassed;
         catch runner__e
             runner__filesFailed = runner__filesFailed + 1;
             runner__failedNames{end+1} = runner__testFiles{runner__k}; %#ok<SAGROW>
             fprintf('  *** %s: FAILED ***\n', runner__testFiles{runner__k});
             fprintf('      Error: %s\n', runner__e.message);
-            % Count any tests that passed before the failure
-            if exist('runner__out', 'var')
-                runner__caseCount = length(regexp(runner__out, ...
-                    'Test \d+ passed', 'match'));
-            else
-                runner__caseCount = 0;
-            end
-            runner__totalCases = runner__totalCases + runner__caseCount + 1;
-            runner__passedCases = runner__passedCases + runner__caseCount;
+            % Credit any cases that passed before the failure, plus 1 for
+            % the case that failed.
+            runner__passedCases = runner__passedCases + runner__nPassed;
+            runner__totalCases  = runner__totalCases  + runner__nPassed + 1;
             % Emit GitHub Actions annotation so the error appears in CI check-run output
             fprintf('::error title=%s::%s\n', ...
                 runner__testFiles{runner__k}, ...

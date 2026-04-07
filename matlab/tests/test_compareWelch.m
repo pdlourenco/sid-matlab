@@ -7,6 +7,7 @@
 % Skips gracefully if not available.
 
 fprintf('Running test_compareWelch...\n');
+runner__nPassed = 0;
 
 if ~exist('tfestimate', 'file')
     fprintf('  test_compareWelch: SKIPPED (requires Signal Processing Toolbox)\n');
@@ -43,6 +44,7 @@ assert(length(G_sid) == length(Txy_mw_noDC), ...
 relErr = abs(G_sid - Txy_mw_noDC) ./ max(abs(Txy_mw_noDC), eps);
 assert(median(relErr) < 0.02, ...
     'SISO tfestimate median relative error too large: %.4f', median(relErr));
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 1 passed: tfestimate response (median relErr=%.6f)\n', median(relErr));
 
 %% Test 2: SISO mscohere coherence comparison
@@ -53,6 +55,7 @@ Coh_sid = result.Coherence(:, 1);
 absErr = abs(Coh_sid - Cxy_mw_noDC);
 assert(median(absErr) < 0.02, ...
     'SISO mscohere median absolute error too large: %.4f', median(absErr));
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 2 passed: mscohere coherence (median absErr=%.6f)\n', median(absErr));
 
 %% Test 3: SISO cpsd cross-spectrum comparison
@@ -75,6 +78,7 @@ Pyu_reconstructed = G_sid .* Puu_mw_noDC;
 relErr_cross = abs(Pyu_reconstructed - Pyu_mw_noDC) ./ max(abs(Pyu_mw_noDC), eps);
 assert(median(relErr_cross) < 0.05, ...
     'Cross-spectrum reconstruction median relErr too large: %.4f', median(relErr_cross));
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 3 passed: cpsd cross-spectrum (median relErr=%.6f)\n', median(relErr_cross));
 
 %% Test 4: Time-series pwelch PSD comparison
@@ -98,6 +102,7 @@ Pxx_sid_scaled = Pxx_sid * Ts;
 relErr_psd = abs(Pxx_sid_scaled - Pxx_mw_noDC) ./ max(abs(Pxx_mw_noDC), eps);
 assert(median(relErr_psd) < 0.05, ...
     'Time-series pwelch median relErr too large: %.4f', median(relErr_psd));
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 4 passed: pwelch PSD (median relErr=%.6f)\n', median(relErr_psd));
 
 %% Test 5: Custom sub-segment parameters
@@ -120,6 +125,7 @@ G5_sid = result5.Response(:, 1);
 relErr5 = abs(G5_sid - Txy5_mw_noDC) ./ max(abs(Txy5_mw_noDC), eps);
 assert(median(relErr5) < 0.02, ...
     'Custom params tfestimate median relErr too large: %.4f', median(relErr5));
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 5 passed: custom sub-segment params (median relErr=%.6f)\n', median(relErr5));
 
 %% Test 6: MIMO (2-output, 1-input)
@@ -153,6 +159,7 @@ assert(median(relErr6_1) < 0.05, ...
     'MIMO ch1 median relErr too large: %.4f', median(relErr6_1));
 assert(median(relErr6_2) < 0.05, ...
     'MIMO ch2 median relErr too large: %.4f', median(relErr6_2));
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 6 passed: MIMO tfestimate (ch1=%.6f, ch2=%.6f)\n', ...
     median(relErr6_1), median(relErr6_2));
 
@@ -183,7 +190,8 @@ assert(freqErr < 1e-6, 'Frequency axis mismatch: %.6f Hz', freqErr);
 relErr7 = abs(G7_sid - Txy7_mw_noDC) ./ max(abs(Txy7_mw_noDC), eps);
 assert(median(relErr7) < 0.02, ...
     'Non-unit Ts median relErr too large: %.4f', median(relErr7));
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 7 passed: non-unit Ts (median relErr=%.6f, freqErr=%.2e)\n', ...
     median(relErr7), freqErr);
 
-fprintf('test_compareWelch: ALL TESTS PASSED\n');
+fprintf('test_compareWelch: %d/%d passed\n', runner__nPassed, runner__nPassed);

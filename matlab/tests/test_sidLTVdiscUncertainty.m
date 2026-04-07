@@ -5,6 +5,7 @@
 % validation of posterior standard deviations.
 
 fprintf('Running test_sidLTVdiscUncertainty...\n');
+runner__nPassed = 0;
 
 %% Test 1: Uncertainty fields present and correct dimensions
 rng(1001);
@@ -38,6 +39,7 @@ assert(isequal(size(result.NoiseCov), [p, p]), 'NoiseCov should be (p x p)');
 assert(result.NoiseCovEstimated == true, 'NoiseCovEstimated should be true');
 assert(isscalar(result.NoiseVariance), 'NoiseVariance should be scalar');
 assert(isscalar(result.DegreesOfFreedom), 'DegreesOfFreedom should be scalar');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 1 passed: uncertainty fields present with correct dimensions.\n');
 
 %% Test 2: AStd, BStd are positive and finite
@@ -45,6 +47,7 @@ assert(all(result.AStd(:) > 0), 'AStd entries should be positive');
 assert(all(result.BStd(:) > 0), 'BStd entries should be positive');
 assert(all(isfinite(result.AStd(:))), 'AStd entries should be finite');
 assert(all(isfinite(result.BStd(:))), 'BStd entries should be finite');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 2 passed: AStd, BStd are positive and finite.\n');
 
 %% Test 3: P(k) matrices are symmetric positive definite
@@ -55,6 +58,7 @@ for k = 1:N
     eigvals = eig(Pk);
     assert(all(eigvals > 0), 'P(%d) is not positive definite', k);
 end
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 3 passed: all P(k) are symmetric positive definite.\n');
 
 %% Test 4: No-regularization limit (lambda -> 0)
@@ -83,6 +87,7 @@ for k = 1:N
     relErr = norm(Pk - P_ols, 'fro') / norm(P_ols, 'fro');
     assert(relErr < 0.1, 'No-reg limit: P(%d) should be ~(D_u''D_u)^{-1}, relErr=%.3f', k, relErr);
 end
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 4 passed: no-regularization limit matches OLS covariance.\n');
 
 %% Test 5: Large-lambda limit: P(k) shrinks
@@ -108,6 +113,7 @@ for k = 1:N
 end
 assert(trP_hi < trP_lo, ...
     'Large lambda should give smaller P (trP_hi=%.4e, trP_lo=%.4e)', trP_hi, trP_lo);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 5 passed: large lambda shrinks P(k).\n');
 
 %% Test 6: Single time step (N=2 gives 2 steps, use known OLS)
@@ -127,6 +133,7 @@ for k = 1:N
     eigP = eig(result.P(:, :, k));
     assert(all(eigP > 0), 'P(%d) should be PD for single-step limit', k);
 end
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 6 passed: N=2 case produces valid uncertainty.\n');
 
 %% Test 7: Isotropic noise -> equal AStd columns
@@ -158,6 +165,7 @@ for k = 1:N
             'Isotropic noise: AStd columns should have consistent ratios at k=%d', k);
     end
 end
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 7 passed: isotropic noise gives consistent AStd structure.\n');
 
 %% Test 8: CovarianceMode diagonal vs full vs isotropic
@@ -192,6 +200,7 @@ assert(isequal(size(res_full.NoiseCov), [p, p]), 'Full mode: NoiseCov should be 
 assert(all(res_diag.AStd(:) > 0), 'Diagonal AStd should be positive');
 assert(all(res_full.AStd(:) > 0), 'Full AStd should be positive');
 assert(all(res_iso.AStd(:) > 0), 'Isotropic AStd should be positive');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 8 passed: covariance modes produce correct structure.\n');
 
 %% Test 9: User-provided NoiseCov
@@ -220,6 +229,7 @@ assert(all(isfinite(result.AStd(:))), 'AStd should be finite with user NoiseCov'
 
 % Providing NoiseCov should auto-enable uncertainty
 assert(isfield(result, 'P'), 'NoiseCov should auto-enable uncertainty');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 9 passed: user-provided NoiseCov works correctly.\n');
 
 %% Test 10: NoiseCov validation errors
@@ -251,6 +261,7 @@ catch e
     assert(strcmp(e.identifier, 'sid:badNoiseCov'), ...
         'Expected sid:badNoiseCov, got %s', e.identifier);
 end
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 10 passed: NoiseCov validation errors correct.\n');
 
 %% Test 11: Uncertainty=false gives no uncertainty fields (backward compat)
@@ -261,6 +272,7 @@ result = sidLTVdisc(X, U, 'Lambda', 1e3);
 assert(~isfield(result, 'AStd'), 'Default should not have AStd');
 assert(~isfield(result, 'P'), 'Default should not have P');
 assert(~isfield(result, 'NoiseCov'), 'Default should not have NoiseCov');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 11 passed: backward compatibility (no uncertainty fields by default).\n');
 
 %% Test 12: Variable-length trajectories with uncertainty
@@ -284,6 +296,7 @@ d = p + q;
 assert(isequal(size(result.AStd), [p, p, Nmax]), 'VarLen AStd dims');
 assert(isequal(size(result.P), [d, d, Nmax]), 'VarLen P dims');
 assert(all(result.AStd(:) > 0), 'VarLen AStd should be positive');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 12 passed: variable-length trajectories with uncertainty.\n');
 
 %% Test 13: Monte Carlo validation
@@ -345,6 +358,7 @@ for k = k_interior
         end
     end
 end
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 13 passed: Monte Carlo validates AStd (200 realizations).\n');
 
 %% Test 14: DegreesOfFreedom is reasonable
@@ -364,7 +378,8 @@ totalObs = N * L;
 % dof should be between 0 and totalObs
 assert(result.DegreesOfFreedom > 0, 'DoF should be positive');
 assert(result.DegreesOfFreedom < totalObs, 'DoF should be < total observations');
+runner__nPassed = runner__nPassed + 1;
 fprintf(['  Test 14 passed: degrees of freedom is reasonable' ...
     ' (dof=%.1f).\n'], result.DegreesOfFreedom);
 
-fprintf('test_sidLTVdiscUncertainty: ALL TESTS PASSED\n');
+fprintf('test_sidLTVdiscUncertainty: %d/%d passed\n', runner__nPassed, runner__nPassed);

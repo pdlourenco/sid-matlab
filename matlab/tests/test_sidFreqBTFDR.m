@@ -4,6 +4,7 @@
 % time-series mode, and SISO/MIMO support.
 
 fprintf('Running test_sidFreqBTFDR...\n');
+runner__nPassed = 0;
 
 %% Test 1: Result struct has all required fields
 rng(42);
@@ -18,18 +19,26 @@ requiredFields = {'Frequency', 'FrequencyHz', 'Response', 'ResponseStd', ...
 for i = 1:length(requiredFields)
     assert(isfield(result, requiredFields{i}), 'Missing field: %s', requiredFields{i});
 end
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 1 passed: result struct has all required fields.\n');
 
 %% Test 2: Method identifier
 assert(strcmp(result.Method, 'sidFreqBTFDR'), 'Method should be sidFreqBTFDR');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 2 passed: method identifier.\n');
 
 %% Test 3: WindowSize is a vector (per-frequency)
 nf = length(result.Frequency);
 assert(isequal(size(result.WindowSize), [nf, 1]), 'WindowSize should be (nf x 1) vector');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 3 passed: WindowSize is a vector (per-frequency).\n');
 
 %% Test 4: Default resolution gives uniform window size
 % Default R = 2*pi/M_default, so all M_k should be the same
 Mk = result.WindowSize;
 assert(all(Mk == Mk(1)), 'Default resolution should give uniform window size');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 4 passed: default resolution gives uniform window size.\n');
 
 %% Test 5: Custom scalar resolution
 result_fine = sidFreqBTFDR(y, u, 'Resolution', 0.1);
@@ -37,6 +46,8 @@ result_coarse = sidFreqBTFDR(y, u, 'Resolution', 1.0);
 % Finer resolution => larger window
 assert(result_fine.WindowSize(1) > result_coarse.WindowSize(1), ...
     'Finer resolution should use larger window');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 5 passed: custom scalar resolution.\n');
 
 %% Test 6: Per-frequency resolution vector
 nf = 128;
@@ -45,6 +56,8 @@ result_vec = sidFreqBTFDR(y, u, 'Resolution', R_vec);
 Mk = result_vec.WindowSize;
 % Window size should generally decrease as resolution increases
 assert(Mk(1) >= Mk(end), 'Larger resolution should give smaller window');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 6 passed: per-frequency resolution vector.\n');
 
 %% Test 7: Error on negative resolution
 try
@@ -53,6 +66,8 @@ try
 catch e
     assert(strcmp(e.identifier, 'sid:badResolution'), 'Expected sid:badResolution error');
 end
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 7 passed: error on negative resolution.\n');
 
 %% Test 8: Error on mismatched resolution vector length
 try
@@ -61,6 +76,8 @@ try
 catch e
     assert(strcmp(e.identifier, 'sid:badResolution'), 'Expected sid:badResolution error');
 end
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 8 passed: error on mismatched resolution vector length.\n');
 
 %% Test 9: Time series mode
 y_ts = randn(300, 1);
@@ -69,14 +86,20 @@ assert(isempty(result_ts.Response), 'Time series: Response should be empty');
 assert(isempty(result_ts.ResponseStd), 'Time series: ResponseStd should be empty');
 assert(isempty(result_ts.Coherence), 'Time series: Coherence should be empty');
 assert(length(result_ts.NoiseSpectrum) == 128, 'Time series should have 128 spectral values');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 9 passed: time series mode.\n');
 
 %% Test 10: SISO coherence is in [0, 1]
 result = sidFreqBTFDR(y, u);
 assert(all(result.Coherence >= 0) && all(result.Coherence <= 1), ...
     'Coherence should be in [0, 1]');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 10 passed: SISO coherence is in [0, 1].\n');
 
 %% Test 11: Noise spectrum is non-negative (SISO)
 assert(all(result.NoiseSpectrum >= 0), 'Noise spectrum should be non-negative');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 11 passed: noise spectrum is non-negative (SISO).\n');
 
 %% Test 12: MIMO mode
 rng(7);
@@ -87,11 +110,15 @@ result_mimo = sidFreqBTFDR(y, u);
 nf = length(result_mimo.Frequency);
 assert(isequal(size(result_mimo.Response), [nf, 2, 2]), 'MIMO Response should be (nf x 2 x 2)');
 assert(isempty(result_mimo.Coherence), 'MIMO Coherence should be empty');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 12 passed: MIMO mode.\n');
 
 %% Test 13: Custom frequencies
 w = linspace(0.1, pi, 50)';
 result = sidFreqBTFDR(y(:,1), u(:,1), 'Frequencies', w);
 assert(length(result.Frequency) == 50, 'Should have 50 frequencies');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 13 passed: custom frequencies.\n');
 
 %% Test 14: Window sizes are clamped to [2, N/2]
 N = 20;
@@ -100,6 +127,8 @@ u = randn(N, 1);
 result = sidFreqBTFDR(y, u, 'Resolution', 0.01);  % Very fine => large M
 assert(all(result.WindowSize <= floor(N/2)), 'M should be clamped to N/2');
 assert(all(result.WindowSize >= 2), 'M should be at least 2');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 14 passed: window sizes are clamped to [2, N/2].\n');
 
 %% Test 15: Known first-order system
 rng(1);
@@ -115,6 +144,8 @@ for i = 1:length(idx)
     relErr = abs(abs(result.Response(k)) - abs(G_true(k))) / abs(G_true(k));
     assert(relErr < 0.25, 'Magnitude at freq %d should match (relErr=%.3f)', k, relErr);
 end
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 15 passed: known first-order system.\n');
 
 %% Test 16: Multi-trajectory — NumTrajectories and variance reduction
 rng(16);
@@ -139,7 +170,8 @@ assert(ratio < expected * 2.5 && ratio > expected * 0.2, ...
     'Variance reduction ratio %.3f should be near %.3f', ...
     ratio, expected);
 
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 16 passed: multi-trajectory (L=%d, ratio=%.3f).\n', ...
     L16, ratio);
 
-fprintf('  test_sidFreqBTFDR: ALL PASSED\n');
+fprintf('test_sidFreqBTFDR: %d/%d passed\n', runner__nPassed, runner__nPassed);

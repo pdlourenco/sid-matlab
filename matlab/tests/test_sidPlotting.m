@@ -4,6 +4,7 @@
 % and handle edge cases. Uses -nodisplay headless mode.
 
 fprintf('Running test_sidPlotting...\n');
+runner__nPassed = 0;
 
 %% Setup: create test result structs
 rng(42);
@@ -30,6 +31,8 @@ catch e
     end
     fprintf('    (Skipping display-dependent test in headless mode)\n');
 end
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 1 passed: sidBodePlot runs without error for SISO.\n');
 
 %% Test 2: sidBodePlot errors on time-series result
 try
@@ -46,6 +49,8 @@ catch e
         end
     end
 end
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 2 passed: sidBodePlot errors on time-series result.\n');
 
 %% Test 3: sidSpectrumPlot runs without error
 try
@@ -61,6 +66,8 @@ catch e
     end
     fprintf('    (Skipping display-dependent test in headless mode)\n');
 end
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 3 passed: sidSpectrumPlot runs without error.\n');
 
 %% Test 4: sidSpectrumPlot with SISO result (noise spectrum)
 try
@@ -73,6 +80,8 @@ catch e
     end
     fprintf('    (Skipping display-dependent test in headless mode)\n');
 end
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 4 passed: sidSpectrumPlot with SISO result.\n');
 
 %% Test 5: sidBodePlot with Hz frequency unit
 try
@@ -85,6 +94,8 @@ catch e
     end
     fprintf('    (Skipping display-dependent test in headless mode)\n');
 end
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 5 passed: sidBodePlot with Hz frequency unit.\n');
 
 %% Test 6: sidBodePlot with no confidence band
 try
@@ -97,6 +108,8 @@ catch e
     end
     fprintf('    (Skipping display-dependent test in headless mode)\n');
 end
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 6 passed: sidBodePlot with no confidence band.\n');
 
 %% Test 7: sidBodePlot with custom color and line width
 try
@@ -109,6 +122,8 @@ catch e
     end
     fprintf('    (Skipping display-dependent test in headless mode)\n');
 end
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 7 passed: sidBodePlot with custom color and line width.\n');
 
 %% Test 8: Plotting ETFE result
 result_etfe = sidFreqETFE(y, u);
@@ -122,6 +137,8 @@ catch e
     end
     fprintf('    (Skipping display-dependent test in headless mode)\n');
 end
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 8 passed: plotting ETFE result.\n');
 
 %% Test 9: Plotting BTFDR result
 result_btfdr = sidFreqBTFDR(y, u);
@@ -135,5 +152,7 @@ catch e
     end
     fprintf('    (Skipping display-dependent test in headless mode)\n');
 end
+runner__nPassed = runner__nPassed + 1;
+fprintf('  Test 9 passed: plotting BTFDR result.\n');
 
-fprintf('  test_sidPlotting: ALL PASSED\n');
+fprintf('test_sidPlotting: %d/%d passed\n', runner__nPassed, runner__nPassed);

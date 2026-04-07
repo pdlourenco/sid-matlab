@@ -5,6 +5,7 @@
 % and input validation.
 
 fprintf('Running test_sidLTIfreqIO...\n');
+runner__nPassed = 0;
 
 %% Test 1: Output dimensions
 rng(100);
@@ -31,6 +32,7 @@ assert(isequal(size(A0), [n, n]), 'A0 should be (%d x %d)', n, n);
 assert(isequal(size(B0), [n, q]), 'B0 should be (%d x %d)', n, q);
 assert(isreal(A0), 'A0 should be real');
 assert(isreal(B0), 'B0 should be real');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 1 passed: output dimensions correct.\n');
 
 %% Test 2: Known system recovery (noiseless, full obs)
@@ -66,6 +68,7 @@ assert(eig_err < 0.1, ...
 A_err = norm(A0 - A_true, 'fro') / norm(A_true, 'fro');
 assert(A_err < 0.15, ...
     'Known system (H=I): A error too large (%.4f)', A_err);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 2 passed: known system recovery (eig_err=%.4f, A_err=%.4f).\n', ...
     eig_err, A_err);
 
@@ -94,6 +97,7 @@ end
 max_eig = max(abs(eig(A0)));
 assert(max_eig <= 0.95 + 1e-10, ...
     'Stability: max eigenvalue %.4f exceeds 0.95', max_eig);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 3 passed: stability enforced (max |eig|=%.4f).\n', max_eig);
 
 %% Test 4: H-basis consistency (impulse response match)
@@ -129,6 +133,7 @@ end
 max_err = norm(g_est_vec - g_true_vec, 'fro') / norm(g_true_vec, 'fro');
 assert(max_err < 0.15, ...
     'H-basis: Markov parameter mismatch (norm err=%.4f)', max_err);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 4 passed: H-basis impulse response match (err=%.4f).\n', ...
     max_err);
 
@@ -164,6 +169,7 @@ errL = norm(sort(eig(AL)) - sort(eig(A_true)));
 % Multi should be at least as good (or close)
 assert(errL <= err1 * 2.0, ...
     'Multi-traj should help: errL=%.4f > 2*err1=%.4f', errL, 2 * err1);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 5 passed: multi-trajectory (errL=%.4f vs err1=%.4f).\n', ...
     errL, err1);
 
@@ -178,6 +184,7 @@ catch e
     end
 end
 assert(passed, 'Should error on H dimension mismatch.');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 6 passed: input validation rejects bad H.\n');
 
 %% Test 7: Horizon parameter
@@ -205,6 +212,7 @@ end
 % Both should produce valid results
 assert(all(isfinite(A0_h20(:))), 'Horizon=20 produced non-finite A');
 assert(all(isfinite(A0_h40(:))), 'Horizon=40 produced non-finite A');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 7 passed: custom horizon works.\n');
 
 %% Test 8: Mass-spring-damper, full observation, LTI
@@ -237,6 +245,7 @@ eig_est = sort(abs(eig(A0)));
 eig_err = norm(eig_true - eig_est) / norm(eig_true);
 assert(eig_err < 0.15, ...
     'MSD full obs: eigenvalue error %.4f', eig_err);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 8 passed: MSD full obs LTI (eig_err=%.4f).\n', ...
     eig_err);
 
@@ -275,6 +284,7 @@ mp_err = norm(g_est_vec - g_true_vec, 'fro') / ...
     norm(g_true_vec, 'fro');
 assert(mp_err < 0.5, ...
     'MSD partial obs LTI: Markov param error %.4f', mp_err);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 9 passed: MSD partial obs LTI (mp_err=%.4f).\n', ...
     mp_err);
 
@@ -310,6 +320,7 @@ errA = norm(A_cell - A_3d, 'fro');
 errB = norm(B_cell - B_3d, 'fro');
 assert(errA < 1e-10, 'Cell vs 3D: A mismatch %.2e', errA);
 assert(errB < 1e-10, 'Cell vs 3D: B mismatch %.2e', errB);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 10 passed: cell matches 3D (errA=%.2e).\n', errA);
 
 %% Test 11: Cell input — variable-length with trimming
@@ -338,6 +349,7 @@ end
 
 eig_err = max(abs(sort(abs(eig(A0))) - sort(abs(eig(A_true)))));
 assert(eig_err < 0.15, 'Cell trimmed: eig error %.4f', eig_err);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 11 passed: cell with trimming (eig_err=%.4f).\n', eig_err);
 
 %% Test 12: H-basis constraint — Markov params match H * A^k * B (SPEC §8.13.1)
@@ -369,6 +381,7 @@ for k = 1:5
         'Markov param k=%d error %.4f', k, mp_err);
     Ak = Ak * A0;
 end
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 12 passed: H-basis Markov parameters match.\n');
 
 %% Test 13: Default Horizon selection (SPEC §8.13.2)
@@ -391,6 +404,7 @@ Y13 = x * H13';
 [A0_def, B0_def] = sidLTIfreqIO(Y13, u, H13);
 assert(all(isfinite(A0_def(:))), 'Default horizon should produce finite A0');
 assert(all(isfinite(B0_def(:))), 'Default horizon should produce finite B0');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 13 passed: default horizon produces valid output.\n');
 
-fprintf('test_sidLTIfreqIO: all tests passed.\n');
+fprintf('test_sidLTIfreqIO: %d/%d passed\n', runner__nPassed, runner__nPassed);

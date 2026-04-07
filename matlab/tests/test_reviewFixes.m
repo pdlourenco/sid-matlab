@@ -6,6 +6,7 @@
 % DISC-7: Cell array input for frequency-domain functions
 
 fprintf('Running test_reviewFixes...\n');
+runner__nPassed = 0;
 
 %% BUG-1a: Multi-trajectory ETFE produces consistent estimates
 % With many trajectories of independent inputs, the H1 estimator should
@@ -39,7 +40,8 @@ p90 = err_sorted(round(0.9 * length(err)));
 assert(p90 < 0.3, ...
     'BUG-1: Multi-traj ETFE 90th-pct error should be < 0.3 (got %.3f).', p90);
 
-fprintf('  BUG-1a: Multi-trajectory ETFE H1 estimator - PASSED\n');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  BUG-1a passed: multi-trajectory ETFE produces consistent estimates.\n');
 
 %% BUG-1b: Single trajectory ETFE unchanged
 rng(102);
@@ -49,7 +51,8 @@ y1 = filter(b, a, u1) + 0.05 * randn(N, 1);
 result1 = sidFreqETFE(y1, u1);
 assert(~any(isnan(result1.Response(:))), ...
     'BUG-1b: Single-traj ETFE should still work.');
-fprintf('  BUG-1b: Single trajectory ETFE still works - PASSED\n');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  BUG-1b passed: single trajectory ETFE unchanged.\n');
 
 %% BUG-2: Frozen TF Jacobian via finite differences
 % Compare Jacobian-based uncertainty against finite-difference perturbation.
@@ -90,7 +93,8 @@ end
 assert(all(frz.ResponseStd(:) >= 0) && all(isfinite(frz.ResponseStd(:))), ...
     'BUG-2: Frozen TF uncertainty should be finite and non-negative.');
 
-fprintf('  BUG-2: Frozen TF Jacobian correctness - PASSED\n');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  BUG-2 passed: frozen TF Jacobian via finite differences.\n');
 
 %% DISC-1: MIMO noise spectrum PSD
 rng(301);
@@ -118,7 +122,8 @@ for kk = 1:nf
         kk, min(eigvals));
 end
 
-fprintf('  DISC-1: MIMO noise spectrum PSD clamping - PASSED\n');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  DISC-1 passed: MIMO noise spectrum PSD.\n');
 
 %% API-3: MIMO uncertainty should be finite (diagonal approximation)
 assert(~any(isnan(result.ResponseStd(:))), ...
@@ -128,7 +133,8 @@ assert(all(result.ResponseStd(:) >= 0), ...
 assert(all(isfinite(result.ResponseStd(:)) | isinf(result.ResponseStd(:))), ...
     'API-3: MIMO ResponseStd entries should be finite or Inf (low input power).');
 
-fprintf('  API-3: MIMO diagonal uncertainty approximation - PASSED\n');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  API-3 passed: MIMO uncertainty should be finite (diagonal approximation).\n');
 
 %% API-1: MIMO residual tests all channels
 rng(501);
@@ -160,7 +166,8 @@ assert(res.WhitenessPass == all(res.WhitenessPassAll), ...
 assert(res.IndependencePass == all(res.IndependencePassAll), ...
     'API-1: IndependencePass should be AND of all pairs.');
 
-fprintf('  API-1: Per-channel MIMO residual tests - PASSED\n');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  API-1 passed: MIMO residual tests all channels.\n');
 
 %% NUM-2: Frequency-domain simulation no extrapolation
 rng(601);
@@ -176,7 +183,8 @@ assert(all(isfinite(cmp.Predicted(:))), ...
 assert(cmp.Fit(1) > 30, ...
     'NUM-2: Fit should be reasonable (got %.1f%%).', cmp.Fit(1));
 
-fprintf('  NUM-2: Frequency-domain simulation no extrapolation - PASSED\n');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  NUM-2 passed: frequency-domain simulation no extrapolation.\n');
 
 %% DISC-7: Cell array input for frequency-domain functions
 rng(401);
@@ -196,13 +204,15 @@ assert(result_cell.NumTrajectories == 2, ...
 assert(result_cell.DataLength == N2, ...
     'DISC-7: DataLength should be trimmed to shortest trajectory.');
 
-fprintf('  DISC-7: Cell array input for sidFreqBT - PASSED\n');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  DISC-7 passed: cell array input for frequency-domain functions.\n');
 
 %% DISC-7b: Cell array time-series mode
 result_ts = sidFreqBT({y1, y2}, []);
 assert(isstruct(result_ts), ...
     'DISC-7b: Time-series cell array should work.');
-fprintf('  DISC-7b: Cell array time-series mode - PASSED\n');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  DISC-7b passed: cell array time-series mode.\n');
 
 %% TEST-4: Frozen TF Jacobian validated against finite differences
 % Perturb each A and B entry by delta, recompute G, compare dG against
@@ -273,7 +283,8 @@ jac_err_B = max(abs(dGdB_fd(:) - dGdB_an(:)));
 assert(jac_err_B < 1e-4, ...
     'TEST-4: Jacobian dG/dB finite-diff error should be < 1e-4 (got %.2e).', jac_err_B);
 
-fprintf('  TEST-4: Frozen TF Jacobian vs finite differences - PASSED\n');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  TEST-4 passed: frozen TF Jacobian validated against finite differences.\n');
 
 %% TEST-2: Edge cases for COSMIC and BT
 
@@ -300,7 +311,8 @@ A_var = A_var / (N_t2 - 1);
 assert(A_var < 1e-6, ...
     'TEST-2a: Very high lambda should give near-constant A (var=%.2e).', A_var);
 
-fprintf('  TEST-2a: Very high lambda -> constant model - PASSED\n');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  TEST-2a passed: very high lambda -> constant model.\n');
 
 % M > N/2 should be clamped with warning
 rng(802);
@@ -310,7 +322,8 @@ warning('on', 'sid:windowReduced');
 assert(r_bigM.WindowSize <= 10, ...
     'TEST-2b: Window size should be clamped to N/2 = 10.');
 
-fprintf('  TEST-2b: M > N/2 clamped - PASSED\n');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  TEST-2b passed: M > N/2 clamped.\n');
 
 % API-5: Custom LambdaGrid for auto mode
 rng(803);
@@ -318,6 +331,7 @@ r_grid = sidLTVdisc(X_t2, U_t2, 'Lambda', 'auto', 'LambdaGrid', [1, 100, 10000])
 assert(all(isfinite(r_grid.A(:))), ...
     'API-5: Custom LambdaGrid should produce finite results.');
 
-fprintf('  API-5: Custom LambdaGrid for auto mode - PASSED\n');
+runner__nPassed = runner__nPassed + 1;
+fprintf('  API-5 passed: custom LambdaGrid for auto mode.\n');
 
-fprintf('test_reviewFixes: ALL PASSED\n');
+fprintf('test_reviewFixes: %d/%d passed\n', runner__nPassed, runner__nPassed);

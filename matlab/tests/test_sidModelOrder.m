@@ -4,6 +4,7 @@
 % gap and threshold detection, output struct fields, and edge cases.
 
 fprintf('Running test_sidModelOrder...\n');
+runner__nPassed = 0;
 
 %% Test 1: Known 2nd-order SISO system
 % Generate data from a 2nd-order discrete system and verify n = 2.
@@ -23,6 +24,7 @@ G = sidFreqBT(y, u, 'WindowSize', 60);
 [n, sv] = sidModelOrder(G);
 
 assert(n == 2, 'Expected n = 2 for 2nd-order system, got n = %d', n);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 1 passed: 2nd-order SISO system detected (n = %d).\n', n);
 
 %% Test 2: Known 4th-order SISO system
@@ -42,6 +44,7 @@ G = sidFreqBT(y, u, 'WindowSize', 100);
 [n, sv] = sidModelOrder(G);
 
 assert(n == 4, 'Expected n = 4 for 4th-order system, got n = %d', n);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 2 passed: 4th-order SISO system detected (n = %d).\n', n);
 
 %% Test 3: Known 1st-order system (edge case)
@@ -54,6 +57,7 @@ G = sidFreqBT(y, u, 'WindowSize', 40);
 [n, ~] = sidModelOrder(G);
 
 assert(n == 1, 'Expected n = 1 for 1st-order system, got n = %d', n);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 3 passed: 1st-order system detected (n = %d).\n', n);
 
 %% Test 4: MIMO system (2x2, 3rd-order)
@@ -76,6 +80,7 @@ G = sidFreqBT(y, u, 'WindowSize', 60);
 
 assert(n >= 2 && n <= 4, ...
     'Expected n close to 3 for 3rd-order MIMO system, got n = %d', n);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 4 passed: MIMO system order detected (n = %d, true = 3).\n', n);
 
 %% Test 5: Threshold method
@@ -92,6 +97,7 @@ G = sidFreqBT(y, u, 'WindowSize', 60);
 
 assert(n_thresh >= 1 && n_thresh <= 6, ...
     'Threshold method returned unreasonable n = %d', n_thresh);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 5 passed: threshold method returned n = %d.\n', n_thresh);
 
 %% Test 6: Output struct fields
@@ -110,6 +116,7 @@ assert(isscalar(sv.Horizon), 'Horizon must be a scalar.');
 assert(all(sv.SingularValues >= 0), 'Singular values must be non-negative.');
 assert(issorted(sv.SingularValues(end:-1:1)), ...
     'Singular values must be in non-increasing order.');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 6 passed: output struct fields correct.\n');
 
 %% Test 7: Custom horizon
@@ -122,6 +129,7 @@ G = sidFreqBT(y, u);
 
 assert(sv.Horizon == 20, 'Expected Horizon = 20, got %d', sv.Horizon);
 assert(length(sv.SingularValues) > 0, 'SingularValues should not be empty.');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 7 passed: custom horizon accepted (r = %d).\n', sv.Horizon);
 
 %% Test 8: Plot option runs without error
@@ -141,6 +149,7 @@ catch e
         rethrow(e);
     end
 end
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 8 passed: Plot option runs without error.\n');
 
 %% Test 9: Input validation - bad struct
@@ -153,6 +162,7 @@ catch e
     end
 end
 assert(passed, 'Should error on non-struct input.');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 9 passed: input validation rejects non-struct.\n');
 
 %% Test 10: Noisy data - still detects correct order with enough data
@@ -169,6 +179,7 @@ G = sidFreqBT(y, u, 'WindowSize', 100);
 
 assert(n == 2, ...
     'Expected n = 2 for noisy 2nd-order system with N=5000, got n = %d', n);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 10 passed: noisy data still detects n = %d.\n', n);
 
 %% Test 11: Gap method — verify SingularValues and gap location (SPEC §8.12.12)
@@ -204,6 +215,7 @@ assert(gap_idx == n_est, ...
 % The gap ratio should be large (clear separation)
 assert(ratios(n_est) > 5, ...
     'Gap ratio at n=%d should be large, got %.2f', n_est, ratios(n_est));
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 11 passed: gap at k=%d (ratio=%.1f).\n', ...
     gap_idx, ratios(n_est));
 
@@ -217,6 +229,7 @@ manual_n = sum(sv / sv(1) > 0.01);
 assert(n_thr == manual_n, ...
     'Threshold method: n=%d should match manual count %d', ...
     n_thr, manual_n);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 12 passed: threshold method (n=%d).\n', n_thr);
 
 %% Test 13: White noise — no system, should return small n
@@ -234,6 +247,7 @@ sv_wn = info_wn.SingularValues;
 nSV = length(sv_wn);
 assert(n_wn < nSV, ...
     'White noise: n=%d should be less than Hankel dim %d', n_wn, nSV);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 13 passed: white noise gives n=%d (Hankel dim=%d).\n', ...
     n_wn, nSV);
 
@@ -256,7 +270,8 @@ G_th = sidFreqBT(y, u, 'WindowSize', 80);
 assert(n_strict <= n_loose, ...
     'Strict threshold n=%d should be <= loose n=%d', n_strict, n_loose);
 assert(n_strict >= 1, 'Strict threshold should give at least n=1');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 14 passed: threshold tuning (strict=%d, loose=%d).\n', ...
     n_strict, n_loose);
 
-fprintf('test_sidModelOrder: all tests passed.\n');
+fprintf('test_sidModelOrder: %d/%d passed\n', runner__nPassed, runner__nPassed);

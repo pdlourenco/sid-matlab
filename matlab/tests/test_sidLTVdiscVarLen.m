@@ -4,6 +4,7 @@
 % of trajectories with different horizons.
 
 fprintf('Running test_sidLTVdiscVarLen...\n');
+runner__nPassed = 0;
 
 %% Test 1: Cell array input runs without error
 rng(2000);
@@ -36,6 +37,7 @@ assert(result.DataLength == 40, 'DataLength should be max horizon = 40');
 assert(result.NumTrajectories == 3, 'NumTrajectories should be 3');
 assert(isequal(size(result.A), [p, p, 40]), 'A dimensions should be (p x p x N)');
 assert(isequal(size(result.B), [p, q, 40]), 'B dimensions should be (p x q x N)');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 1 passed: cell array input works.\n');
 
 %% Test 2: Both paths recover the system well with uniform-length data
@@ -73,6 +75,7 @@ errA_3d   = norm(A_mean_3d - A_true, 'fro') / norm(A_true, 'fro');
 errA_cell = norm(A_mean_cell - A_true, 'fro') / norm(A_true, 'fro');
 assert(errA_3d < 0.15, '3D path should recover A well: %.4f', errA_3d);
 assert(errA_cell < 0.15, 'Cell path should recover A well: %.4f', errA_cell);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 2 passed: both paths recover LTI system (3d=%.4f, cell=%.4f).\n', ...
     errA_3d, errA_cell);
 
@@ -93,6 +96,7 @@ assert(result.DataLength == 30, 'DataLength should be max(Ns) = 30');
 assert(result.NumTrajectories == 5, 'NumTrajectories should be 5');
 assert(isequal(size(result.A), [p, p, 30]), 'A size should be (1 x 1 x 30)');
 assert(isequal(size(result.B), [p, q, 30]), 'B size should be (1 x 1 x 30)');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 3 passed: mixed-length dimensions correct.\n');
 
 %% Test 4: Short + long trajectories - no crash, reasonable results
@@ -131,6 +135,7 @@ assert(result.DataLength == 40, 'DataLength should be 40');
 A_mean = mean(result.A, 3);
 errA = norm(A_mean - A_true, 'fro') / norm(A_true, 'fro');
 assert(errA < 0.2, 'Short+long should still recover A: %.4f', errA);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 4 passed: short+long trajectories work (errA=%.4f).\n', errA);
 
 %% Test 5: Single trajectory in cell array
@@ -148,6 +153,7 @@ end
 result = sidLTVdisc(X_cell, U_cell, 'Lambda', 1e6);
 assert(result.NumTrajectories == 1, 'NumTrajectories should be 1');
 assert(result.DataLength == N, 'DataLength should be N');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 5 passed: single trajectory in cell array works.\n');
 
 %% Test 6: Input validation for cell arrays
@@ -205,6 +211,7 @@ catch e
         'Expected sid:dimMismatch, got %s', e.identifier);
 end
 
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 6 passed: input validation for cell arrays correct.\n');
 
 %% Test 7: L-curve auto lambda with cell array input
@@ -229,6 +236,7 @@ end
 
 result = sidLTVdisc(X_cell, U_cell, 'Lambda', 'auto');
 assert(all(result.Lambda > 0), 'Auto lambda should be positive');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 7 passed: L-curve auto lambda with cell arrays works.\n');
 
-fprintf('test_sidLTVdiscVarLen: ALL TESTS PASSED\n');
+fprintf('test_sidLTVdiscVarLen: %d/%d passed\n', runner__nPassed, runner__nPassed);

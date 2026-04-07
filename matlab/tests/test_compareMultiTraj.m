@@ -6,6 +6,7 @@
 % spa/etfe/spafdr with merged multi-experiment iddata objects.
 
 fprintf('Running test_compareMultiTraj...\n');
+runner__nPassed = 0;
 
 %% Toolbox check
 if ~exist('spa', 'file') || ~exist('iddata', 'file')
@@ -46,6 +47,7 @@ phaseErr = max(abs(angle(r_sid.Response) - angle(resp_spa)));
 assert(phaseErr < 0.02, ...
     'Test 1: SISO multi-traj phase error=%.4f rad should be <0.02', phaseErr);
 
+runner__nPassed = runner__nPassed + 1;
 fprintf(['  Test 1 passed: sidFreqBT matches spa(merge(...))' ...
     ' for L=%d (mag err=%.4f).\n'], L, relErr_mag);
 
@@ -69,6 +71,7 @@ spec_spa = real(squeeze(G_spa.SpectrumData));
 relErr = max(abs(real(r_sid.NoiseSpectrum) - spec_spa) ./ max(abs(spec_spa), 1e-10));
 assert(relErr < 0.05, ...
     'Test 2: time-series multi-traj spectrum relErr=%.4f should be <5%%', relErr);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 2 passed: time-series multi-traj spectrum matches spa(merge(...)).\n');
 
 %% Test 3: sidFreqETFE vs etfe with merged iddata (L=3)
@@ -107,6 +110,7 @@ relErr = max(abs(abs(r_sid.Response) - abs(resp_etfe)) ./ max(abs(resp_etfe), 1e
 % also uses loose tolerances for ETFE).
 assert(relErr < 0.50, ...
     'Test 3: ETFE multi-traj relErr=%.4f should be <50%%', relErr);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 3 passed: sidFreqETFE matches etfe(merge(...)) (err=%.4f).\n', relErr);
 
 %% Test 4: sidFreqBTFDR vs spafdr with merged iddata (L=3)
@@ -136,6 +140,7 @@ else
     relErr = median(abs(abs(r_sid.Response) - abs(resp_spafdr)) ./ max(abs(resp_spafdr), 1e-10));
     assert(relErr < 0.10, ...
         'Test 4: BTFDR multi-traj median relErr=%.4f should be <10%%', relErr);
+    runner__nPassed = runner__nPassed + 1;
     fprintf(['  Test 4 passed: sidFreqBTFDR matches' ...
         ' spafdr(merge(...)) (median err=%.4f).\n'], relErr);
 end
@@ -167,6 +172,7 @@ for ch = 1:2
     assert(relErr < 0.02, ...
         'Test 5: MIMO ch%d multi-traj relErr=%.4f should be <2%%', ch, relErr);
 end
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 5 passed: MIMO multi-trajectory matches spa(merge(...)).\n');
 
-fprintf('  test_compareMultiTraj: ALL PASSED\n');
+fprintf('test_compareMultiTraj: %d/%d passed\n', runner__nPassed, runner__nPassed);

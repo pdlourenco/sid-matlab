@@ -1,6 +1,7 @@
 % test_sidResidual.m - Test residual analysis function
 
 fprintf('Running test_sidResidual...\n');
+runner__nPassed = 0;
 
 %% Test 1: Good model — white residuals
 rng(6001);
@@ -17,6 +18,7 @@ assert(isfield(resid, 'IndependencePass'), 'Should have IndependencePass field')
 assert(isequal(size(resid.Residual), [N, 1]), 'Residual should be N x 1');
 assert(resid.ConfidenceBound > 0, 'Confidence bound should be positive');
 % With a good model and enough data, whiteness test should usually pass
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 1 passed: residual struct valid (whiteness=%d, independence=%d).\n', ...
     resid.WhitenessPass, resid.IndependencePass);
 
@@ -34,6 +36,7 @@ resid_bad = sidResidual(result_bad, y, u);
 % With a deliberately poor model, residuals should show structure
 assert(~isempty(resid_bad.AutoCorr), 'AutoCorr should be computed');
 assert(length(resid_bad.AutoCorr) > 1, 'AutoCorr should have multiple lags');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 2 passed: bad model residual analysis works.\n');
 
 %% Test 3: State-space path (sidLTVdisc)
@@ -54,6 +57,7 @@ resid_ss = sidResidual(ltv, X, U);
 assert(isequal(size(resid_ss.Residual), [N, p]), ...
     'SS residual should be N x p');
 assert(isscalar(resid_ss.ConfidenceBound), 'Confidence bound should be scalar');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 3 passed: state-space residual analysis.\n');
 
 %% Test 4: Time-series mode (u=[])
@@ -66,6 +70,7 @@ resid_ts = sidResidual(result_ts, y, []);
 
 assert(isempty(resid_ts.CrossCorr), 'CrossCorr should be empty for time series');
 assert(resid_ts.IndependencePass == true, 'Independence should be vacuously true');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 4 passed: time-series residual analysis.\n');
 
 %% Test 5: Multi-channel (MIMO)
@@ -80,6 +85,7 @@ result_mimo = sidFreqBT(y, u, 'WindowSize', 30);
 resid_mimo = sidResidual(result_mimo, y, u);
 
 assert(size(resid_mimo.Residual, 2) == 2, 'MIMO residual should have 2 columns');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 5 passed: MIMO residual analysis.\n');
 
 %% Test 6: Plot option (headless check)
@@ -98,6 +104,7 @@ catch
     plotOk = false;
 end
 assert(plotOk, 'Plot option should not error');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 6 passed: plot option works.\n');
 
 %% Test 7: Confidence bound formula verification (SPEC §14.3)
@@ -113,6 +120,7 @@ expected_bound = 2.58 / sqrt(N);
 assert(abs(resid_cb.ConfidenceBound - expected_bound) < 1e-10, ...
     'ConfidenceBound should be 2.58/sqrt(N)=%.6f, got %.6f', ...
     expected_bound, resid_cb.ConfidenceBound);
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 7 passed: confidence bound = 2.58/sqrt(N).\n');
 
 %% Test 8: Normalised autocorrelation formula (SPEC §14.2)
@@ -133,6 +141,7 @@ autoLags = resid_ac.AutoCorr(2:end);  % exclude lag 0
 manual_pass = all(abs(autoLags) < bound);
 assert(resid_ac.WhitenessPass == manual_pass, ...
     'WhitenessPass should match manual check');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 8 passed: autocorrelation normalised, r_ee(0)=1.\n');
 
 %% Test 9: Cross-correlation normalisation (SPEC §14.2)
@@ -150,6 +159,7 @@ bound_cc = resid_cc.ConfidenceBound;
 manual_indep = all(abs(resid_cc.CrossCorr) < bound_cc);
 assert(resid_cc.IndependencePass == manual_indep, ...
     'IndependencePass should match manual check');
+runner__nPassed = runner__nPassed + 1;
 fprintf('  Test 9 passed: cross-correlation independence check.\n');
 
-fprintf('  test_sidResidual: ALL PASSED\n');
+fprintf('test_sidResidual: %d/%d passed\n', runner__nPassed, runner__nPassed);
