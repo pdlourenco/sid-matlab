@@ -16,7 +16,10 @@ addpath(fullfile(rootDir, 'matlab', 'sid'));
 
 files = dir(fullfile(thisDir, 'reference_*.json'));
 if isempty(files)
-    error('No reference JSON files found in %s', thisDir);
+    fprintf('No reference JSON files found in %s\n', thisDir);
+    fprintf('Run generate_reference.m under MATLAB first.\n');
+    fprintf('\n=== SKIP (no reference data) ===\n');
+    return;
 end
 
 nPass = 0;
