@@ -105,6 +105,10 @@ function result = callSidFunction(funcName, input, params)
                 u = [];
             end
             result = feval(funcName, input.y, u, args{:});
+        case 'sidSpectrogram'
+            result = sidSpectrogram(input.x, args{:});
+        case 'sidFreqMap'
+            result = sidFreqMap(input.y, input.u, args{:});
         case 'sidLTVdisc'
             result = feval(funcName, input.X, input.U, args{:});
         case 'internals'
