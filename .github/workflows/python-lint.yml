@@ -1,0 +1,39 @@
+name: Python Lint
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'python/sid/**.py'
+      - '.github/scripts/check_python_headers.py'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'python/sid/**.py'
+      - '.github/scripts/check_python_headers.py'
+
+jobs:
+  ruff:
+    name: Style & lint check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Lint check (ruff check)
+        run: ruff check python/sid/
+
+      - name: Format check (ruff format)
+        run: ruff format --check python/sid/
+
+      - name: Docstring standard
+        run: python .github/scripts/check_python_headers.py

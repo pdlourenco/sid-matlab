@@ -35,6 +35,7 @@ Each language has its own contributing guide with conventions for naming,
 documentation, code style, and testing:
 
 - **MATLAB/Octave**: [`matlab/CONTRIBUTING.md`](matlab/CONTRIBUTING.md)
+- **Python**: [`python/CONTRIBUTING.md`](python/CONTRIBUTING.md)
 
 ## Test and Example Auto-Discovery
 
@@ -71,8 +72,10 @@ with auto-discovery from day one and provide starter templates.
 
 CI workflows run per-language:
 
-- **Tests** — MATLAB and GNU Octave test suites
-- **Lint** — MISS_HIT style and lint checks for MATLAB code
+- **MATLAB Tests** — MATLAB and GNU Octave test suites
+- **MATLAB Lint** — MISS_HIT style/lint checks and function header validation
+- **Python Lint** — ruff style/lint checks and docstring validation
+- **Python Tests** — pytest on Python 3.10–3.13
 - **Cross-Language Validation** — reference test vector consistency
 
 All checks must pass before merging.
