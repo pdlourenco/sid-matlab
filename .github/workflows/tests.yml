@@ -1,4 +1,4 @@
-name: Tests
+name: MATLAB/Octave tests
 
 on:
   workflow_dispatch:
