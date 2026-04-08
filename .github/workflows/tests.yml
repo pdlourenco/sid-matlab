@@ -11,6 +11,9 @@ on:
     paths:
       - 'matlab/**.m'
 
+permissions:
+  contents: write
+
 jobs:
   octave:
     name: Octave tests & examples
@@ -66,19 +69,10 @@ jobs:
         with:
           command: run('testdata/generate_reference.m')
 
-      - name: Verify reference data matches committed versions
+      - name: Commit reference data if changed
         run: |
-          if git diff --quiet testdata/*.json 2>/dev/null; then
-            echo "Reference data is up to date."
-          else
-            echo "::error::Reference data out of date. Run generate_reference.m locally and commit the updated JSON files."
-            git diff --stat testdata/
-            exit 1
-          fi
-
-      - name: Upload reference data
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: reference-data
-          path: testdata/*.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add testdata/*.json
+          git diff --staged --quiet || git commit -m "Update cross-language reference data [skip ci]"
+          git push
