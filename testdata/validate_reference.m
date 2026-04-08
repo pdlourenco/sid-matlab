@@ -120,12 +120,93 @@ function result = callSidFunction(funcName, input, params)
             Phi_xx = sidWindowedDFT(R_xx, W, freqs, true, R_xx);
             R_zx   = sidCov(z, x, M);
             Phi_xz = sidWindowedDFT(R_xz, W, freqs, true, R_zx);
+            X_dft  = sidDFT(x, freqs, true);
             result = struct( ...
                 'R_xx', R_xx, 'R_xz', R_xz, 'W', W, ...
                 'Phi_xx_real', real(Phi_xx), ...
                 'Phi_xx_imag', imag(Phi_xx), ...
                 'Phi_xz_real', real(Phi_xz), ...
-                'Phi_xz_imag', imag(Phi_xz));
+                'Phi_xz_imag', imag(Phi_xz), ...
+                'DFT_real', real(X_dft), ...
+                'DFT_imag', imag(X_dft));
+        case 'sidDetrend'
+            [x_det, trend] = sidDetrend(input.x, args{:});
+            result = struct('x_detrended', x_det, 'trend', trend);
+        case 'sidModelOrder'
+            r_bt = sidFreqBT(input.y, input.u, ...
+                             'WindowSize', params.bt_WindowSize);
+            [n, sv] = sidModelOrder(r_bt, 'Horizon', params.Horizon);
+            result = struct('n', n, 'SingularValues', sv.SingularValues);
+        case 'sidCompare'
+            r_ltv = sidLTVdisc(input.X, input.U, args{:});
+            comp = sidCompare(r_ltv, input.X, input.U);
+            result = struct('Predicted', comp.Predicted, 'Fit', comp.Fit);
+        case 'sidResidual'
+            r_bt = sidFreqBT(input.y, input.u, ...
+                             'WindowSize', params.bt_WindowSize);
+            res = sidResidual(r_bt, input.y, input.u, ...
+                              'MaxLag', params.MaxLag, 'Plot', false);
+            result = struct('Residual', res.Residual, ...
+                            'AutoCorr', res.AutoCorr, ...
+                            'CrossCorr', res.CrossCorr);
+        case 'sidFreqDomainSim'
+            r_bt = sidFreqBT(input.y_noiseless, input.u, ...
+                             'WindowSize', params.bt_WindowSize);
+            Y_pred = sidFreqDomainSim(r_bt.Response, r_bt.Frequency, ...
+                                      input.u, size(input.u, 1));
+            result = struct('Y_pred', Y_pred);
+        case 'sidUncertainty'
+            M_unc = params.bt_WindowSize;
+            r_bt = sidFreqBT(input.y, input.u, 'WindowSize', M_unc);
+            W_unc = sidHannWin(M_unc);
+            [GStd, PhiVStd] = sidUncertainty(r_bt.Response, ...
+                r_bt.NoiseSpectrum, r_bt.Coherence, ...
+                size(input.y, 1), W_unc, 1);
+            result = struct('GStd', GStd, 'PhiVStd', PhiVStd);
+        case 'sidLTVdiscFrozen'
+            r_ltv = sidLTVdisc(input.X, input.U, ...
+                               'Lambda', params.Lambda, ...
+                               'Precondition', params.Precondition);
+            frozen = sidLTVdiscFrozen(r_ltv, ...
+                                     'TimeSteps', params.frozen_TimeSteps);
+            result = struct('Frequency', frozen.Frequency, ...
+                            'Response', frozen.Response);
+        case 'cosmic_internals'
+            N_ci = size(input.U, 1);
+            p_ci = size(input.X, 2);
+            q_ci = size(input.U, 2);
+            d_ci = p_ci + q_ci;
+            lam = input.lambda * ones(N_ci - 1, 1);
+            [D, Xl] = sidLTVbuildDataMatrices( ...
+                input.X, input.U, N_ci, p_ci, q_ci, 1);
+            [S, T] = sidLTVbuildBlockTerms(D, Xl, lam, N_ci, p_ci, q_ci);
+            [C, ~] = sidLTVcosmicSolve(S, T, lam, N_ci, p_ci, q_ci);
+            A_est = zeros(p_ci, p_ci, N_ci);
+            B_est = zeros(p_ci, q_ci, N_ci);
+            for k = 1:N_ci
+                A_est(:, :, k) = C(1:p_ci, :, k)';
+                B_est(:, :, k) = C(p_ci+1:d_ci, :, k)';
+            end
+            [cost, fid, reg] = sidLTVevaluateCost( ...
+                A_est, B_est, D, Xl, lam, N_ci, p_ci, q_ci);
+            S_scaled = S / N_ci;
+            P = sidLTVuncertaintyBackwardPass(S_scaled, lam, N_ci, d_ci);
+            result = struct('D', D, 'Xl', Xl, 'S', S, 'T', T, 'C', C, ...
+                            'cost', cost, 'fidelity', fid, ...
+                            'regularization', reg, 'P', P);
+        case 'sidLTVdiscIO'
+            result = sidLTVdiscIO(input.Y, input.U, input.H, args{:});
+        case 'sidLTVStateEst'
+            X_hat = sidLTVStateEst(input.Y, input.U, ...
+                                   input.A, input.B, input.H);
+            result = struct('X_hat', X_hat);
+        case 'sidLTIfreqIO'
+            [A0, B0] = sidLTIfreqIO(input.Y, input.U, input.H);
+            result = struct('A0', A0, 'B0', B0);
+        case 'sidTestMSD'
+            [Ad, Bd] = sidTestMSD(input.m, input.k_spring, ...
+                                  input.c_damp, input.F, input.Ts);
+            result = struct('Ad', Ad, 'Bd', Bd);
         otherwise
             error('Unknown function: %s', funcName);
     end
@@ -136,7 +217,8 @@ function args = structToNameValue(s)
 %STRUCTTONAMEVALUE Convert struct fields to {'Name', value, ...} cell array.
     fields = fieldnames(s);
     % Filter out metadata-only fields not accepted by sid functions
-    meta = {'mode'};
+    meta = {'mode', 'bt_WindowSize', 'frozen_TimeSteps', 'Horizon', ...
+            'MaxLag'};
     fields = fields(~ismember(fields, meta));
     args = cell(1, 2 * numel(fields));
     for i = 1:numel(fields)
