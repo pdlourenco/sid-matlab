@@ -5,6 +5,8 @@
 %   sidFreqBTFDR - Blackman-Tukey with frequency-dependent resolution (replaces spafdr)
 %   sidFreqETFE  - Empirical Transfer Function Estimate (replaces etfe)
 
+runner__nCompleted = 0;
+
 %% Generate test data
 % First-order system with moderate noise.
 
@@ -14,12 +16,18 @@ u = randn(N, 1);
 y_clean = filter(1, [1 -0.85], u);
 y = y_clean + 0.3 * randn(N, 1);
 
+runner__nCompleted = runner__nCompleted + 1;
+fprintf('  Section %d completed: Generate test data.\n', runner__nCompleted);
+
 %% Estimate with all three methods
 
 r_bt   = sidFreqBT(y, u, 'WindowSize', 30);
 r_etfe = sidFreqETFE(y, u);
 r_etfe_s = sidFreqETFE(y, u, 'Smoothing', 15);
 r_fdr  = sidFreqBTFDR(y, u, 'Resolution', 0.3);
+
+runner__nCompleted = runner__nCompleted + 1;
+fprintf('  Section %d completed: Estimate with all three methods.\n', runner__nCompleted);
 
 %% Compare Bode magnitude plots
 
@@ -41,9 +49,12 @@ semilogx(w, 20*log10(abs(G_true)), ...
 xlabel('Frequency (rad/sample)');
 ylabel('Magnitude (dB)');
 title('Method Comparison: Bode Magnitude');
-legend('show', 'Location', 'southwest');
+legend('Location', 'southwest');
 grid on;
 hold off;
+
+runner__nCompleted = runner__nCompleted + 1;
+fprintf('  Section %d completed: Compare Bode magnitude plots.\n', runner__nCompleted);
 
 %% Compare noise spectra
 % BT and BTFDR compute the noise spectrum from covariance estimates.
@@ -57,9 +68,12 @@ semilogx(w, 10*log10(abs(r_fdr.NoiseSpectrum)), 'r', 'DisplayName', 'BTFDR');
 xlabel('Frequency (rad/sample)');
 ylabel('Noise Spectrum (dB)');
 title('Noise Spectrum Comparison');
-legend('show');
+legend;
 grid on;
 hold off;
+
+runner__nCompleted = runner__nCompleted + 1;
+fprintf('  Section %d completed: Compare noise spectra.\n', runner__nCompleted);
 
 %% Custom logarithmic frequency grid
 % A log-spaced grid provides better low-frequency coverage.
@@ -82,9 +96,12 @@ semilogx(w_log, 20*log10(abs(G_true_log)), 'k--', 'LineWidth', 1.5, ...
 xlabel('Frequency (rad/sample)');
 ylabel('Magnitude (dB)');
 title('Log Frequency Grid (200 Points)');
-legend('show', 'Location', 'southwest');
+legend('Location', 'southwest');
 grid on;
 hold off;
+
+runner__nCompleted = runner__nCompleted + 1;
+fprintf('  Section %d completed: Custom logarithmic frequency grid.\n', runner__nCompleted);
 
 %% Time-series comparison: periodogram vs smoothed spectrum
 % With no input (u=[]), all three methods estimate the output power spectrum.
@@ -110,9 +127,14 @@ semilogx(w_ts, 10*log10(Phi_true), 'k--', 'LineWidth', 1.5, ...
 xlabel('Frequency (rad/sample)');
 ylabel('Power Spectrum (dB)');
 title('Time-Series: Periodogram vs Blackman-Tukey');
-legend('show', 'Location', 'southwest');
+legend('Location', 'southwest');
 grid on;
 hold off;
+
+runner__nCompleted = runner__nCompleted + 1;
+fprintf('  Section %d completed: %s.\n', ...
+    runner__nCompleted, ...
+    'Time-series comparison: periodogram vs smoothed spectrum');
 
 %% Model output comparison using sidCompare
 % Compare how well each method predicts the measured output.
@@ -125,6 +147,9 @@ fprintf('  sidFreqBT:    %.1f%%\n', comp_bt.Fit);
 fprintf('  sidFreqBTFDR: %.1f%%\n', comp_fdr.Fit);
 fprintf('  sidFreqETFE:  %.1f%%\n', comp_etfe.Fit);
 
+runner__nCompleted = runner__nCompleted + 1;
+fprintf('  Section %d completed: Model output comparison using sidCompare.\n', runner__nCompleted);
+
 %% Summary of method trade-offs
 fprintf('\n--- Method Comparison Summary ---\n');
 fprintf('%-12s  %-12s  %-11s  %-9s\n', 'Method', 'WindowSize', 'Uncertainty', 'Coherence');
@@ -132,3 +157,9 @@ fprintf('%-12s  %-12s  %-11s  %-9s\n', '------', '----------', '-----------', '-
 fprintf('%-12s  %-12s  %-11s  %-9s\n', 'sidFreqBT',   'Fixed M',      'Yes', 'Yes');
 fprintf('%-12s  %-12s  %-11s  %-9s\n', 'sidFreqBTFDR','Per-freq M_k', 'Yes', 'Yes');
 fprintf('%-12s  %-12s  %-11s  %-9s\n', 'sidFreqETFE', 'N (full)',     'No',  'No');
+
+runner__nCompleted = runner__nCompleted + 1;
+fprintf('  Section %d completed: Summary of method trade-offs.\n', runner__nCompleted);
+
+fprintf('exampleMethodComparison: %d/%d sections completed\n', ...
+    runner__nCompleted, runner__nCompleted);

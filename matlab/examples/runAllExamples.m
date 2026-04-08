@@ -1,7 +1,7 @@
-%% runAllExamples - Run all examples and report pass/fail summary
+%% runAllExamples - Run all examples and report completion summary
 %
 % Discovers and runs all example*.m scripts in this directory, then reports
-% a pass/fail summary. Designed for headless CI execution (all figures are
+% a completion summary. Designed for headless CI execution (all figures are
 % closed after each example). New examples are picked up automatically —
 % no manifest to edit.
 %
@@ -32,22 +32,31 @@ for runner__k = 1:length(runner__exampleFiles)
 end
 
 runner__nExamples = length(runner__exampleFiles);
-runner__passed = 0;
+runner__completed = 0;
 runner__failed = 0;
 runner__failedNames = {};
+runner__completedSections = 0;
+runner__totalSections = 0;
 
 for runner__k = 1:runner__nExamples
     fprintf('Running %s...\n', runner__exampleFiles{runner__k});
+    runner__nCompleted = 0;
     try
         run(fullfile(runner__thisDir, [runner__exampleFiles{runner__k} '.m']));
         close all;
-        runner__passed = runner__passed + 1;
-        fprintf('  %s: OK\n', runner__exampleFiles{runner__k});
+        runner__completed = runner__completed + 1;
+        runner__completedSections = runner__completedSections + runner__nCompleted;
+        runner__totalSections = runner__totalSections + runner__nCompleted;
+        fprintf('  %s: OK (%d sections)\n', runner__exampleFiles{runner__k}, ...
+            runner__nCompleted);
     catch runner__e
         close all;
         runner__failed = runner__failed + 1;
         runner__failedNames{end+1} = runner__exampleFiles{runner__k}; %#ok<SAGROW>
-        fprintf('  *** %s: FAILED ***\n', runner__exampleFiles{runner__k});
+        runner__completedSections = runner__completedSections + runner__nCompleted;
+        runner__totalSections = runner__totalSections + runner__nCompleted + 1;
+        fprintf('  *** %s: FAILED (after %d sections) ***\n', ...
+            runner__exampleFiles{runner__k}, runner__nCompleted);
         fprintf('      Error: %s\n', runner__e.message);
         % Emit GitHub Actions annotation
         fprintf('::error title=%s::%s\n', ...
@@ -57,9 +66,12 @@ for runner__k = 1:runner__nExamples
 end
 
 fprintf('\n=== Examples Summary ===\n');
-fprintf('  Total:  %d\n', runner__nExamples);
-fprintf('  Passed: %d\n', runner__passed);
-fprintf('  Failed: %d\n', runner__failed);
+fprintf('  Files:    %d completed, %d failed (%d total)\n', ...
+    runner__completed, runner__failed, runner__nExamples);
+fprintf('  Sections: %d completed, %d failed (%d total)\n', ...
+    runner__completedSections, ...
+    runner__totalSections - runner__completedSections, ...
+    runner__totalSections);
 
 if runner__failed > 0
     fprintf('\n  Failed examples:\n');
@@ -70,5 +82,5 @@ if runner__failed > 0
     error('sid:examplesFailed', '%d of %d examples failed.', ...
         runner__failed, runner__nExamples);
 else
-    fprintf('\n  ALL EXAMPLES PASSED\n\n');
+    fprintf('\n  ALL EXAMPLES COMPLETED\n\n');
 end
