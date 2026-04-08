@@ -36,11 +36,17 @@ __version__ = "1.0.0"
 
 from sid._exceptions import SidError
 from sid._results import FreqResult
+from sid.detrend import detrend
 from sid.freq_bt import freq_bt
+from sid.freq_btfdr import freq_btfdr
+from sid.freq_etfe import freq_etfe
 
 __all__ = [
     "__version__",
     "FreqResult",
     "SidError",
+    "detrend",
     "freq_bt",
+    "freq_btfdr",
+    "freq_etfe",
 ]

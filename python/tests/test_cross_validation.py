@@ -294,3 +294,75 @@ class TestCrossValidationInternals:
             rtol=ref["tolerance"]["Phi_rel"],
             err_msg="Cross-spectrum windowed DFT mismatch vs MATLAB reference",
         )
+
+
+class TestCrossValidationETFE:
+    """SISO ETFE: reference_siso_etfe.json."""
+
+    def test_etfe_response(self):
+        ref = _load("reference_siso_etfe.json")
+        y = _to_array(ref["input"], "y")
+        u = _to_array(ref["input"], "u")
+        smoothing = ref["params"]["Smoothing"]
+        ts = ref["params"]["SampleTime"]
+
+        result = sid.freq_etfe(y, u, smoothing=smoothing, sample_time=ts)
+
+        expected_resp = _to_complex(ref["output"], "Response")
+        np.testing.assert_allclose(
+            result.response,
+            expected_resp.ravel(),
+            rtol=ref["tolerance"]["Response_rel"],
+            err_msg="ETFE response mismatch vs MATLAB reference",
+        )
+
+    def test_etfe_noise_spectrum(self):
+        ref = _load("reference_siso_etfe.json")
+        y = _to_array(ref["input"], "y")
+        u = _to_array(ref["input"], "u")
+        smoothing = ref["params"]["Smoothing"]
+
+        result = sid.freq_etfe(y, u, smoothing=smoothing)
+
+        expected_ns = _to_array(ref["output"], "NoiseSpectrum")
+        np.testing.assert_allclose(
+            result.noise_spectrum,
+            expected_ns.ravel(),
+            rtol=ref["tolerance"]["NoiseSpectrum_rel"],
+            err_msg="ETFE noise spectrum mismatch vs MATLAB reference",
+        )
+
+
+class TestCrossValidationBTFDR:
+    """SISO BTFDR: reference_siso_btfdr.json."""
+
+    def test_btfdr_response(self):
+        ref = _load("reference_siso_btfdr.json")
+        y = _to_array(ref["input"], "y")
+        u = _to_array(ref["input"], "u")
+        ts = ref["params"]["SampleTime"]
+
+        result = sid.freq_btfdr(y, u, sample_time=ts)
+
+        expected_resp = _to_complex(ref["output"], "Response")
+        np.testing.assert_allclose(
+            result.response,
+            expected_resp.ravel(),
+            rtol=ref["tolerance"]["Response_rel"],
+            err_msg="BTFDR response mismatch vs MATLAB reference",
+        )
+
+    def test_btfdr_noise_spectrum(self):
+        ref = _load("reference_siso_btfdr.json")
+        y = _to_array(ref["input"], "y")
+        u = _to_array(ref["input"], "u")
+
+        result = sid.freq_btfdr(y, u)
+
+        expected_ns = _to_array(ref["output"], "NoiseSpectrum")
+        np.testing.assert_allclose(
+            result.noise_spectrum,
+            expected_ns.ravel(),
+            rtol=ref["tolerance"]["NoiseSpectrum_rel"],
+            err_msg="BTFDR noise spectrum mismatch vs MATLAB reference",
+        )
