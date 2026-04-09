@@ -704,16 +704,62 @@ class TestCrossValidationLTVStateEst:
     """LTV state estimation: reference_ltv_state_est.json."""
 
     def test_state_est(self):
-        _load("reference_ltv_state_est.json")
-        # Load stored inputs and call ltv_state_est, compare X_hat
-        # (details depend on JSON structure -- skip if complex to deserialize)
-        pytest.skip("Complex JSON deserialization -- validated via ltv_disc_io tests")
+        ref = _load("reference_ltv_state_est.json")
+        Y = _to_array(ref["input"], "Y")
+        U = _to_array(ref["input"], "U")
+        if U.ndim == 1:
+            U = U[:, np.newaxis]
+        A = _to_array(ref["input"], "A")
+        B = _to_array(ref["input"], "B")
+        H = _to_array(ref["input"], "H")
+
+        from sid.ltv_state_est import ltv_state_est
+
+        X_hat = ltv_state_est(Y, U, A, B, H)
+        if isinstance(X_hat, np.ndarray) and X_hat.ndim == 3 and X_hat.shape[2] == 1:
+            X_hat = X_hat[:, :, 0]
+
+        expected = _to_array(ref["output"], "X_hat")
+        np.testing.assert_allclose(
+            X_hat,
+            expected,
+            rtol=ref["tolerance"]["X_hat_rel"],
+            atol=1e-10,
+            err_msg="LTV state estimation mismatch vs MATLAB reference",
+        )
 
 
 class TestCrossValidationLTIFreqIO:
     """LTI freq IO: reference_lti_freq_io.json."""
 
     def test_lti_freq_io(self):
-        _load("reference_lti_freq_io.json")
-        # Similar -- skip for now, validated transitively via ltv_disc_io
-        pytest.skip("Validated transitively via ltv_disc_io cross-validation")
+        ref = _load("reference_lti_freq_io.json")
+        Y = _to_array(ref["input"], "Y")
+        U = _to_array(ref["input"], "U")
+        if U.ndim == 1:
+            U = U[:, np.newaxis]
+        H = _to_array(ref["input"], "H")
+
+        from sid.lti_freq_io import lti_freq_io
+
+        A0, B0 = lti_freq_io(Y, U, H)
+
+        expected_A0 = _to_array(ref["output"], "A0")
+        expected_B0 = _to_array(ref["output"], "B0")
+        if expected_B0.ndim == 1:
+            expected_B0 = expected_B0[:, np.newaxis]
+
+        np.testing.assert_allclose(
+            A0,
+            expected_A0,
+            rtol=ref["tolerance"]["A0_rel"],
+            atol=1e-8,
+            err_msg="LTI A0 mismatch vs MATLAB reference",
+        )
+        np.testing.assert_allclose(
+            B0,
+            expected_B0,
+            rtol=ref["tolerance"]["B0_rel"],
+            atol=1e-8,
+            err_msg="LTI B0 mismatch vs MATLAB reference",
+        )

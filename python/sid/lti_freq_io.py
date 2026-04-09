@@ -329,6 +329,11 @@ def _parse_inputs(
         Y_trim = Y_arr[:N_u, :, :]
         U_out = U_arr
 
+        # Squeeze single-trajectory dimension so freq_bt sees 2D input
+        if Y_trim.shape[2] == 1:
+            Y_trim = Y_trim[:, :, 0]
+            U_out = U_out[:, :, 0]
+
     return Y_trim, U_out, py, n, q
 
 
