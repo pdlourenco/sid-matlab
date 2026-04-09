@@ -14,6 +14,16 @@ function sidResultTypes()
 %   See the Python equivalent in python/sid/_results.py (frozen dataclasses
 %   with per-field type annotations and docstrings).
 %
+%   INPUTS:
+%     (none — this function takes no arguments)
+%
+%   OUTPUTS:
+%     (none — prints a help reminder to the console)
+%
+%   EXAMPLES:
+%     help sidResultTypes     % view all result struct definitions
+%     sidResultTypes          % prints a reminder to use help
+%
 % =========================================================================
 %  1. FreqResult  (sidFreqBT, sidFreqBTFDR, sidFreqETFE)
 % =========================================================================
@@ -23,7 +33,7 @@ function sidResultTypes()
 %                 sidLTVdiscTune (frequency method)
 %
 %   Field               Dimensions          Description
-%   -----------------------------------------------------------------------
+%   .................................................................
 %   .Frequency          (nf x 1)            Frequency vector, rad/sample
 %   .FrequencyHz        (nf x 1)            Frequency vector, Hz
 %   .Response           (nf x ny x nu)      Complex frequency response.
@@ -53,7 +63,7 @@ function sidResultTypes()
 %   Consumed by:  sidMapPlot
 %
 %   Field               Dimensions              Description
-%   -----------------------------------------------------------------------
+%   .................................................................
 %   .Time               (K x 1)                 Center time of each segment
 %                                                (seconds).
 %   .Frequency          (nf x 1)                Frequency vector, rad/sample.
@@ -83,7 +93,7 @@ function sidResultTypes()
 %   Consumed by:  sidSpectrogramPlot
 %
 %   Field               Dimensions              Description
-%   -----------------------------------------------------------------------
+%   .................................................................
 %   .Time               (K x 1)                 Center time of each segment
 %                                                (seconds).
 %   .Frequency          (n_bins x 1)            Frequency vector, Hz.
@@ -106,7 +116,7 @@ function sidResultTypes()
 %   Consumed by:  sidLTVdiscFrozen, sidCompare, sidResidual
 %
 %   Field               Dimensions          Description
-%   -----------------------------------------------------------------------
+%   .................................................................
 %   .A                  (p x p x N)         Time-varying dynamics matrices.
 %   .B                  (p x q x N)         Time-varying input matrices.
 %   .Lambda             (N-1 x 1)           Regularization values used.
@@ -142,7 +152,7 @@ function sidResultTypes()
 %   Consumed by:  sidCompare, sidResidual
 %
 %   Field               Dimensions          Description
-%   -----------------------------------------------------------------------
+%   .................................................................
 %   .A                  (n x n x N)         Estimated dynamics matrices.
 %   .B                  (n x q x N)         Estimated input matrices.
 %   .X                  (N+1 x n x L) or    Estimated state trajectories.
@@ -168,7 +178,7 @@ function sidResultTypes()
 %   Consumed by:  sidBodePlot, sidMapPlot (via manual extraction)
 %
 %   Field               Dimensions          Description
-%   -----------------------------------------------------------------------
+%   .................................................................
 %   .Frequency          (nf x 1)            Frequency vector, rad/sample.
 %   .FrequencyHz        (nf x 1)            Frequency vector, Hz.
 %   .TimeSteps          (nk x 1)            Selected time step indices
@@ -187,7 +197,7 @@ function sidResultTypes()
 %   Produced by:  sidCompare
 %
 %   Field               Dimensions          Description
-%   -----------------------------------------------------------------------
+%   .................................................................
 %   .Predicted          (N x ny)            Model-predicted output.
 %   .Measured           (N x ny)            Measured output (copy).
 %   .Fit                (1 x ny)            NRMSE fit percentage per
@@ -202,7 +212,7 @@ function sidResultTypes()
 %   Produced by:  sidResidual
 %
 %   Field               Dimensions          Description
-%   -----------------------------------------------------------------------
+%   .................................................................
 %   .Residual           (N x ny)            Residual time series e(t).
 %   .AutoCorr           (M+1 x 1)           Normalised autocorrelation
 %                                            r_ee(tau).
