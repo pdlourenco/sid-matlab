@@ -14,6 +14,7 @@ import numpy as np
 from sid._exceptions import SidError
 from sid._internal.cov import sid_cov
 from sid._internal.freq_domain_sim import freq_domain_sim
+from sid._results import ResidualResult
 
 
 def residual(
@@ -23,7 +24,7 @@ def residual(
     *,
     max_lag: int | None = None,
     plot: bool = False,
-) -> dict:
+) -> ResidualResult:
     """Compute model residuals and perform diagnostic tests.
 
     This is the Python port of ``sidResidual.m``.
@@ -53,24 +54,24 @@ def residual(
 
     Returns
     -------
-    dict
-        Dictionary with the following keys:
+    ResidualResult
+        Frozen dataclass with attributes:
 
-        - ``'residual'`` -- ``(N, ny)`` residual time series.
-        - ``'auto_corr'`` -- ``(max_lag+1,)`` normalised autocorrelation
-          of the first channel (for quick inspection).
-        - ``'auto_corr_all'`` -- ``(max_lag+1, ny)`` per-channel
+        - **residual** -- ``(N, ny)`` residual time series.
+        - **auto_corr** -- ``(max_lag+1,)`` normalised autocorrelation
+          of the first channel.
+        - **auto_corr_all** -- ``(max_lag+1, ny)`` per-channel
           autocorrelation.
-        - ``'cross_corr'`` -- ``(2*max_lag+1, ny*nu)`` normalised
+        - **cross_corr** -- ``(2*max_lag+1, ny*nu)`` normalised
           cross-correlation, or empty array for time-series.
-        - ``'confidence_bound'`` -- scalar 99% bound ``2.58/sqrt(N)``.
-        - ``'whiteness_pass'`` -- bool, ``True`` if all channels pass.
-        - ``'whiteness_pass_all'`` -- ``(ny,)`` bool array, per-channel.
-        - ``'independence_pass'`` -- bool, ``True`` if all pairs pass
+        - **confidence_bound** -- scalar 99% bound ``2.58/sqrt(N)``.
+        - **whiteness_pass** -- bool, ``True`` if all channels pass.
+        - **whiteness_pass_all** -- ``(ny,)`` bool array, per-channel.
+        - **independence_pass** -- bool, ``True`` if all pairs pass
           (always ``True`` for time-series).
-        - ``'independence_pass_all'`` -- ``(ny*nu,)`` bool array
-          (omitted for time-series).
-        - ``'data_length'`` -- int, effective number of samples *N*.
+        - **independence_pass_all** -- ``(ny*nu,)`` bool array, or
+          ``None`` for time-series.
+        - **data_length** -- int, effective number of samples *N*.
 
     Raises
     ------
@@ -213,21 +214,20 @@ def residual(
     # ------------------------------------------------------------------
     # Pack result
     # ------------------------------------------------------------------
-    result_dict: dict = {
-        "residual": e,
-        "auto_corr": auto_corr,
-        "auto_corr_all": auto_corr_all,
-        "cross_corr": cross_corr,
-        "confidence_bound": conf_bound,
-        "whiteness_pass": whiteness_pass,
-        "whiteness_pass_all": whiteness_pass_all,
-        "independence_pass": independence_pass,
-        "data_length": N_eff,
-    }
-    if not is_time_series:
-        result_dict["independence_pass_all"] = indep_pass_all
+    indep_pass_all_out: np.ndarray | None = indep_pass_all if not is_time_series else None
 
-    return result_dict
+    return ResidualResult(
+        residual=e,
+        auto_corr=auto_corr,
+        auto_corr_all=auto_corr_all,
+        cross_corr=cross_corr,
+        confidence_bound=conf_bound,
+        whiteness_pass=whiteness_pass,
+        whiteness_pass_all=whiteness_pass_all,
+        independence_pass=independence_pass,
+        independence_pass_all=indep_pass_all_out,
+        data_length=N_eff,
+    )
 
 
 # ======================================================================
