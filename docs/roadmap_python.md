@@ -167,9 +167,23 @@ python/
 
 ---
 
-## Result Structs
+## Result Types
 
-All `sid.freq_*` functions return `FreqResult` (frozen dataclass):
+Every public function returns a typed, frozen dataclass from `sid._results`.
+All are immutable and support tab-completion in IPython/Jupyter.
+
+| Result type | Returned by | Key fields |
+|---|---|---|
+| `FreqResult` | `freq_bt`, `freq_etfe`, `freq_btfdr` | `response`, `noise_spectrum`, `coherence`, `frequency` |
+| `FreqMapResult` | `freq_map` | `response`, `noise_spectrum`, `coherence`, `time`, `frequency` |
+| `SpectrogramResult` | `spectrogram` | `power`, `power_db`, `complex_stft`, `time`, `frequency` |
+| `LTVResult` | `ltv_disc` | `a`, `b`, `a_std`, `b_std`, `lambda_`, `cost` |
+| `LTVIOResult` | `ltv_disc_io` | `a`, `b`, `x`, `cost`, `iterations` |
+| `FrozenResult` | `ltv_disc_frozen` | `response`, `response_std`, `time_steps`, `frequency` |
+| `ResidualResult` | `residual` | `residual`, `auto_corr`, `whiteness_pass`, `independence_pass` |
+| `CompareResult` | `compare` | `predicted`, `measured`, `fit`, `residual` |
+
+### FreqResult fields (example)
 
 ```python
 result.frequency          # (nf,) rad/sample
