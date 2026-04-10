@@ -371,9 +371,7 @@ def freq_map(
     2026-04-08 : First version (Python port) by Pedro Lourenco.
     """
     # ---- Validate data (preserve variable-length lists for SPEC.md §6.2) ----
-    y, u, N, ny, nu, is_time_series, n_traj = validate_data(
-        y, u, preserve_lengths=True
-    )
+    y, u, N, ny, nu, is_time_series, n_traj = validate_data(y, u, preserve_lengths=True)
 
     # When the input was a variable-length list, validate_data returns lists
     # of per-trajectory arrays.  We then do per-segment filtering below.
