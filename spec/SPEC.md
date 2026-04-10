@@ -113,6 +113,8 @@ R̂_xz^ens(τ) = (1/L) Σ_{l=1}^{L} R̂_xz^(l)(τ)
 
 where `R̂_xz^(l)(τ)` is the biased covariance from trajectory `l`. The averaging is performed at the covariance level, before windowing and Fourier transformation. This preserves the H1 estimator structure (ratio of averaged spectra, not average of ratios).
 
+**Variable-length handling:** When trajectories are passed as a cell / list of unequal-length arrays, `sidFreqBT`, `sidFreqETFE`, `sidFreqBTFDR`, and `sidSpectrogram` **trim every trajectory to the shortest length** `N_common = min_l N_l` before computing covariances, and emit a warning (`sid:trimmedTrajectories`) identifying the trim length. This reflects the whole-signal nature of the correlogram / periodogram at every frequency: there is no per-sample alignment that would let the extra tail of a longer trajectory contribute. The segment-level estimator `sidFreqMap` uses a stricter per-segment filtering rule (§6.2) that does not apply here.
+
 ### 2.4 Hann Lag Window
 
 The Hann (Hanning) window of size `M`:
@@ -624,7 +626,7 @@ in units of seconds.
 | `Overlap` | scalar | Overlap P |
 | `WindowSize` | scalar | BT lag window size M (BT only) |
 | `Algorithm` | char | `'bt'` or `'welch'` |
-| `NumTrajectories` | scalar or `(K × 1)` | Number of trajectories used (scalar if constant, vector if variable-length) |
+| `NumTrajectories` | scalar or `(K × 1)` | Number of trajectories used. Scalar when every segment uses the same count (uniform-length input, or variable-length input where all trajectories happen to span every segment). `(K × 1)` vector of per-segment counts when the count varies across segments (variable-length input with per-segment filtering, §6.2). |
 | `Method` | char | `'sidFreqMap'` |
 
 **Dimensions shown are for SISO.** For MIMO, `Response` becomes `(n_f × K × n_y × n_u)`, etc.
@@ -743,7 +745,7 @@ The standard short-time Fourier transform:
 | `FrequencyRad` | `(n_bins × 1)` real | Frequency vector (rad/s) |
 | `Power` | `(n_bins × K × n_ch)` real | Power spectral density per segment |
 | `PowerDB` | `(n_bins × K × n_ch)` real | `10 × log10(Power)` |
-| `Complex` | `(n_bins × K × n_ch)` complex | Complex STFT coefficients (before squaring) |
+| `Complex` | `(n_bins × K × n_ch)` complex | Complex STFT coefficients (before squaring). For multi-trajectory input (`L > 1`), this field stores the **ensemble-averaged** STFT `(1/L) Σ_l X_l(ω, t_k)`. Note that `\|Complex\|² ≠ Power` in this case, since `Power` uses `(1/L) Σ_l \|X_l\|²` per §7.2; the two coincide only for `L = 1`. |
 | `SampleTime` | scalar | Sample time Ts |
 | `WindowLength` | scalar | Segment length L |
 | `Overlap` | scalar | Overlap P |
@@ -903,6 +905,8 @@ For k = N-2, ..., 0:
 ```
 
 **Complexity:** `O(N × (p+q)³)` — linear in the number of time steps, cubic in state+input dimension, independent of the number of trajectories `L` (which only affects the precomputation of `D(k)ᵀD(k)` and `Θ_k`).
+
+**Numerical diagnostic.** At each forward-pass step, the recursion inverts `Λ_{k-1}`. When `Λ_{k-1}` becomes ill-conditioned (`rcond(Λ_{k-1}) < eps`, where `eps` is machine epsilon), the solver issues a warning identifying the offending step and reporting the reciprocal condition number. This typically indicates that the regularization `λ` is too small relative to the noise level or that the empirical data covariance (§8.3.5) is close to rank-deficient. The solver still returns a result, but the user should interpret it with caution and consider increasing `λ`. Downstream uncertainty estimates (§8.9) may also be unreliable in this regime.
 
 #### 8.3.5 Existence and Uniqueness
 
@@ -1681,6 +1685,8 @@ The following are out of scope for v1.0:
 ---
 
 ## 9. Output Struct
+
+> **Field naming convention.** Field names in this specification are written in PascalCase to match the MATLAB/Octave implementation (`result.Frequency`, `result.Response`, etc.). Python implementations should map each identifier to snake_case per PEP 8 (`result.frequency`, `result.response`, `result.window_size`, `result.num_trajectories`, `result.noise_cov_estimated`, etc.). The mapping is purely syntactic: the types, shapes, and semantics defined below are binding for every implementation.
 
 All `sidFreq*` functions return a struct with these fields:
 

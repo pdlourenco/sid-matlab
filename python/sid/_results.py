@@ -145,8 +145,15 @@ class FreqMapResult:
     algorithm: str
     """``'bt'`` or ``'welch'``."""
 
-    num_trajectories: int
-    """Number of trajectories used."""
+    num_trajectories: int | np.ndarray
+    """Number of trajectories used.
+
+    Scalar ``int`` when every segment uses the same number of
+    trajectories (uniform-length input, or variable-length input where
+    all trajectories happen to span every segment).  A ``(K,)`` ndarray
+    of ``intp`` values otherwise — one entry per segment, giving the
+    number of trajectories that spanned that segment (SPEC.md §6.8).
+    """
 
     method: str
     """Always ``'freq_map'``."""
@@ -219,8 +226,12 @@ class LTVResult:
     algorithm: str
     """Identification algorithm (``'cosmic'``)."""
 
-    preconditioned: bool
-    """Whether block-diagonal preconditioning was applied."""
+    preconditioned: bool | str
+    """Whether block-diagonal preconditioning was applied.
+
+    ``False`` when not requested, ``'not_implemented'`` when requested
+    but disabled (v1.0), or ``True`` when implemented and applied.
+    """
 
     method: str
     """Always ``'ltv_disc'``."""
