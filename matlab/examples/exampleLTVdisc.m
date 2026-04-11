@@ -1,338 +1,284 @@
-%% exampleLTVdisc - LTV state-space identification with sidLTVdisc
+%% exampleLTVdisc - COSMIC LTV state-space identification on a 1-DoF SMD
 %
-% This example demonstrates sidLTVdisc (COSMIC algorithm) for identifying
-% time-varying discrete linear systems of the form:
+% Full walk-through of the COSMIC workflow on a physical 1-DoF
+% spring-mass-damper plant: LTI recovery, LTV recovery with ramping
+% stiffness, multi-trajectory benefit, validation and frequency-
+% based lambda tuning, preconditioning, cost decomposition,
+% uncertainty quantification, frozen transfer function, and
+% compare/residual validation. Ends with a weakly-nonlinear Duffing
+% section that recovers the amplitude-dependent linearization.
 %
-%   x(k+1) = A(k) x(k) + B(k) u(k)
+% Plant A: m = 1 kg, k_baseline = 100 N/m, c = 2 N.s/m, Ts = 0.01 s.
+% Plant E: same m, k, c with cubic stiffness k_cub = 1e5.
 %
-% It also demonstrates sidLTVdiscTune for automatic regularization tuning.
+% For the 1-DoF plant with small Ts, Ad(2,1) ~ -k*Ts, so as k ramps
+% 200 -> 50 the recovered A(2,1,k) should drift from -2.0 to -0.5.
+%
+% See spec/EXAMPLES.md section 3.9 for the binding specification.
 
 runner__nCompleted = 0;
 
-%% LTI system recovery
-% First, verify that sidLTVdisc correctly identifies a known LTI system
-% where A and B are constant.
+%% 1. LTI system recovery
+% Plant A with constant stiffness. Simulate L trajectories with
+% process noise and verify sidLTVdisc recovers Ad at high lambda.
 
 rng(100);
-p = 2;  q = 1;  N = 50;  L = 10;
-A_true = [0.9 0.1; -0.1 0.8];
-B_true = [1; 0.5];
-sigma = 0.02;
 
-% Generate L trajectories
-X = zeros(N+1, p, L);
+m  = 1.0;    k  = 100.0;    c  = 2.0;    F  = 1.0;
+Ts = 0.01;
+[Ad_true, Bd_true] = util_msd(m, k, c, F, Ts);
+p = 2;  q = 1;
+
+N = 50;  L = 10;
+sigma = 0.01;
+
+X = zeros(N + 1, p, L);
 U = randn(N, q, L);
 for l = 1:L
     X(1, :, l) = randn(1, p);
-    for k = 1:N
-        X(k+1, :, l) = (A_true * X(k, :, l)' + B_true * U(k, :, l)' ...
-            + sigma * randn(p, 1))';
+    for step = 1:N
+        X(step + 1, :, l) = (Ad_true * X(step, :, l)' ...
+            + Bd_true * U(step, :, l)' + sigma * randn(p, 1))';
     end
 end
 
 result_lti = sidLTVdisc(X, U, 'Lambda', 1e5);
-
-% A(:,:,k) should be approximately constant
 A_mean = mean(result_lti.A, 3);
-fprintf('True A:\n');  disp(A_true);
-fprintf('Mean recovered A:\n');  disp(A_mean);
-fprintf('Recovery error: %.4f\n', norm(A_mean - A_true, 'fro'));
+fprintf('True Ad:\n');  disp(Ad_true);
+fprintf('Mean recovered A(k):\n');  disp(A_mean);
+fprintf('Recovery error (Frobenius): %.4e\n', ...
+    norm(A_mean - Ad_true, 'fro'));
 
 runner__nCompleted = runner__nCompleted + 1;
 fprintf('  Section %d completed: LTI system recovery.\n', runner__nCompleted);
 
-%% LTV system: time-varying pole
-% The (1,1) entry of A ramps from 0.5 to 0.9 over time.
+%% 2. LTV system: time-varying stiffness
+% k ramps from 200 to 50 N/m over N = 80 steps. We build the per-
+% step Ad_tv stack with util_msd_ltv and simulate the LTV recursion.
+% Auto-lambda recovers A(2,1,k) ~ -k(t)*Ts.
 
 rng(200);
-N = 80;  L = 15;
-a_ramp = linspace(0.5, 0.9, N)';
-A_tv = zeros(p, p, N);
-for k = 1:N
-    A_tv(:,:,k) = [a_ramp(k), 0.1; -0.1, 0.8];
-end
 
-X_tv = zeros(N+1, p, L);
-U_tv = randn(N, q, L);
-for l = 1:L
+N_tv = 80;  L_tv = 15;
+k_tv = linspace(200.0, 50.0, N_tv);
+[Ad_tv, Bd_tv] = util_msd_ltv(m, k_tv, c, F, Ts);
+
+X_tv = zeros(N_tv + 1, p, L_tv);
+U_tv = randn(N_tv, q, L_tv);
+for l = 1:L_tv
     X_tv(1, :, l) = randn(1, p);
-    for k = 1:N
-        X_tv(k+1, :, l) = (A_tv(:,:,k) * X_tv(k, :, l)' ...
-            + B_true * U_tv(k, :, l)' + 0.05 * randn(p, 1))';
+    for step = 1:N_tv
+        X_tv(step + 1, :, l) = (Ad_tv(:, :, step) * X_tv(step, :, l)' ...
+            + Bd_tv(:, :, step) * U_tv(step, :, l)' ...
+            + 0.01 * randn(p, 1))';
     end
 end
 
-result_tv = sidLTVdisc(X_tv, U_tv, 'Lambda', 1e4);
-
-% Plot recovered A(1,1,k) vs true ramp
-figure;
-plot(1:N, squeeze(result_tv.A(1,1,:)), 'b', 'DisplayName', 'Recovered A_{11}(k)');
-hold on;
-plot(1:N, a_ramp, 'k--', 'LineWidth', 1.5, 'DisplayName', 'True A_{11}(k)');
-xlabel('Time step k');
-ylabel('A_{11}(k)');
-title('LTV Identification: Time-Varying Pole Recovery');
-legend;
-grid on;
-hold off;
-
-runner__nCompleted = runner__nCompleted + 1;
-fprintf('  Section %d completed: LTV system: time-varying pole.\n', runner__nCompleted);
-
-%% Automatic lambda selection (L-curve)
-% With 'Lambda', 'auto', sidLTVdisc uses the L-curve method to find the
-% regularization that best balances data fidelity and smoothness.
-
-result_auto = sidLTVdisc(X_tv, U_tv, 'Lambda', 'auto');
-fprintf('\nAutomatic lambda: %.2e\n', result_auto.Lambda(1));
+result_tv = sidLTVdisc(X_tv, U_tv, 'Lambda', 'auto');
+fprintf('auto lambda: %.3e\n', result_tv.Lambda(1));
 
 figure;
-plot(1:N, squeeze(result_auto.A(1,1,:)), 'r', 'DisplayName', 'Auto \lambda');
+kk = (1:N_tv)';
+A21_true = squeeze(Ad_tv(2, 1, :));
+A21_rec  = squeeze(result_tv.A(2, 1, :));
+plot(kk, A21_true, 'k--', 'LineWidth', 1.5, ...
+    'DisplayName', 'True A(2,1,k) \approx -k(t) T_s');
 hold on;
-plot(1:N, squeeze(result_tv.A(1,1,:)), 'b', 'DisplayName', '\lambda = 10^4');
-plot(1:N, a_ramp, 'k--', 'LineWidth', 1.5, 'DisplayName', 'True');
-xlabel('Time step k');
-ylabel('A_{11}(k)');
-title('Manual vs Automatic Lambda');
-legend;
-grid on;
+plot(kk, A21_rec, 'b', 'DisplayName', 'COSMIC (auto \lambda)');
 hold off;
+xlabel('Time step k');
+ylabel('A(2,1,k)');
+title('LTV identification: recovered A(2,1) tracks the ramping stiffness');
+legend('Location', 'southeast');
+grid on;
 
 runner__nCompleted = runner__nCompleted + 1;
-fprintf('  Section %d completed: Automatic lambda selection (L-curve).\n', runner__nCompleted);
+fprintf('  Section %d completed: LTV system: time-varying stiffness.\n', ...
+    runner__nCompleted);
 
-%% Multi-trajectory benefit
-% More trajectories provide more information and reduce estimation error.
+%% 3. Multi-trajectory benefit
+% Compare L = 3 against L = 20 trajectories on the same LTV plant.
 
 rng(300);
-L_few  = 3;
-L_many = 20;
+L_few = 3;  L_many = 20;
 
-X_few  = X_tv(:, :, 1:L_few);
-U_few  = U_tv(:, :, 1:L_few);
+X_few = X_tv(:, :, 1:L_few);
+U_few = U_tv(:, :, 1:L_few);
 
-X_many = zeros(N+1, p, L_many);
-U_many = randn(N, q, L_many);
+X_many = zeros(N_tv + 1, p, L_many);
+U_many = randn(N_tv, q, L_many);
 for l = 1:L_many
     X_many(1, :, l) = randn(1, p);
-    for k = 1:N
-        X_many(k+1, :, l) = (A_tv(:,:,k) * X_many(k, :, l)' ...
-            + B_true * U_many(k, :, l)' + 0.05 * randn(p, 1))';
+    for step = 1:N_tv
+        X_many(step + 1, :, l) = (Ad_tv(:, :, step) * X_many(step, :, l)' ...
+            + Bd_tv(:, :, step) * U_many(step, :, l)' ...
+            + 0.01 * randn(p, 1))';
     end
 end
 
-r_few  = sidLTVdisc(X_few,  U_few,  'Lambda', 1e4);
-r_many = sidLTVdisc(X_many, U_many, 'Lambda', 1e4);
+r_few  = sidLTVdisc(X_few,  U_few,  'Lambda', 'auto');
+r_many = sidLTVdisc(X_many, U_many, 'Lambda', 'auto');
 
 figure;
-plot(1:N, squeeze(r_few.A(1,1,:)),  'r', 'DisplayName', sprintf('L = %d', L_few));
+plot(kk, A21_true, 'k--', 'LineWidth', 1.5, 'DisplayName', 'True');
 hold on;
-plot(1:N, squeeze(r_many.A(1,1,:)), 'b', 'DisplayName', sprintf('L = %d', L_many));
-plot(1:N, a_ramp, 'k--', 'LineWidth', 1.5, 'DisplayName', 'True');
-xlabel('Time step k');
-ylabel('A_{11}(k)');
-title('Effect of Number of Trajectories');
-legend;
-grid on;
+plot(kk, squeeze(r_few.A(2, 1, :)),  'r', ...
+    'DisplayName', sprintf('L = %d', L_few));
+plot(kk, squeeze(r_many.A(2, 1, :)), 'b', ...
+    'DisplayName', sprintf('L = %d', L_many));
 hold off;
+xlabel('Time step k');
+ylabel('A(2,1,k)');
+title('Effect of number of trajectories');
+legend('Location', 'southeast');
+grid on;
 
 runner__nCompleted = runner__nCompleted + 1;
-fprintf('  Section %d completed: Multi-trajectory benefit.\n', runner__nCompleted);
+fprintf('  Section %d completed: Multi-trajectory benefit.\n', ...
+    runner__nCompleted);
 
-%% Validation-based lambda tuning with sidLTVdiscTune
-% Split trajectories into training and validation sets, then search over
-% a grid of lambda values to minimize validation prediction error.
+%% 4. Validation-based lambda tuning with sidLTVdiscTune
+% Split L = 20 into 14 train + 6 validation, grid-search lambda.
 
 rng(400);
-L_total = 20;  L_train = 14;  L_val = L_total - L_train;
+L_total = 20;  L_train = 14;
 
-X_all = zeros(N+1, p, L_total);
-U_all = randn(N, q, L_total);
+X_all = zeros(N_tv + 1, p, L_total);
+U_all = randn(N_tv, q, L_total);
 for l = 1:L_total
     X_all(1, :, l) = randn(1, p);
-    for k = 1:N
-        X_all(k+1, :, l) = (A_tv(:,:,k) * X_all(k, :, l)' ...
-            + B_true * U_all(k, :, l)' + 0.05 * randn(p, 1))';
+    for step = 1:N_tv
+        X_all(step + 1, :, l) = (Ad_tv(:, :, step) * X_all(step, :, l)' ...
+            + Bd_tv(:, :, step) * U_all(step, :, l)' ...
+            + 0.01 * randn(p, 1))';
     end
 end
-
 X_train = X_all(:, :, 1:L_train);
 U_train = U_all(:, :, 1:L_train);
-X_val   = X_all(:, :, L_train+1:end);
-U_val   = U_all(:, :, L_train+1:end);
+X_val   = X_all(:, :, L_train + 1:end);
+U_val   = U_all(:, :, L_train + 1:end);
 
-grid_lam = logspace(0, 10, 30);
+grid_lam = logspace(-3, 6, 30);
 [bestResult, bestLambda, allLosses] = sidLTVdiscTune(X_train, U_train, ...
     X_val, U_val, 'LambdaGrid', grid_lam);
+fprintf('Validation-tuned lambda: %.2e\n', bestLambda);
 
-fprintf('\nValidation-tuned lambda: %.2e\n', bestLambda);
-
-% Plot validation RMSE vs lambda
 figure;
 semilogx(grid_lam, allLosses, 'b.-');
 hold on;
-semilogx(bestLambda, min(allLosses), 'ro', 'MarkerSize', 10, 'LineWidth', 2);
+semilogx(bestLambda, min(allLosses), 'ro', 'MarkerSize', 10);
 hold off;
 xlabel('\lambda');
 ylabel('Validation RMSE');
-title('Lambda Tuning: Validation Loss Curve');
+title('Lambda tuning: validation loss curve');
 grid on;
 
 runner__nCompleted = runner__nCompleted + 1;
-fprintf('  Section %d completed: %s.\n', ...
-    runner__nCompleted, 'Validation-based lambda tuning with sidLTVdiscTune');
+fprintf('  Section %d completed: Validation-based lambda tuning.\n', ...
+    runner__nCompleted);
 
-%% Preconditioning for numerical stability
-% Block-diagonal preconditioning can improve conditioning of the solve.
-
-result_pre = sidLTVdisc(X_tv, U_tv, 'Lambda', 1e4, 'Precondition', true);
-fprintf('\nPreconditioned: %d\n', result_pre.Preconditioned);
+%% 5. Preconditioning for numerical stability
+result_pre = sidLTVdisc(X_tv, U_tv, 'Lambda', 1e-1, 'Precondition', true);
+fprintf('Preconditioned: %d\n', result_pre.Preconditioned);
 
 runner__nCompleted = runner__nCompleted + 1;
-fprintf('  Section %d completed: Preconditioning for numerical stability.\n', runner__nCompleted);
+fprintf('  Section %d completed: Preconditioning for numerical stability.\n', ...
+    runner__nCompleted);
 
-%% Cost decomposition
-% result.Cost = [total, data_fidelity, regularization]
-
-fprintf('\nCost decomposition:\n');
+%% 6. Cost decomposition
+fprintf('Cost decomposition:\n');
 fprintf('  Total:          %.4f\n', result_tv.Cost(1));
 fprintf('  Data fidelity:  %.4f\n', result_tv.Cost(2));
-fprintf('  Regularization: %.4f\n', result_tv.Cost(3));
-fprintf('  Check: %.4e (should be ~0)\n', ...
+fprintf('  Regularisation: %.4f\n', result_tv.Cost(3));
+fprintf('  Check (should be ~0): %.4e\n', ...
     result_tv.Cost(1) - result_tv.Cost(2) - result_tv.Cost(3));
 
 runner__nCompleted = runner__nCompleted + 1;
 fprintf('  Section %d completed: Cost decomposition.\n', runner__nCompleted);
 
-%% Uncertainty quantification
-% Enable Bayesian posterior uncertainty to get standard deviations for each
-% A(k) and B(k) entry. The noise covariance is estimated from residuals.
+%% 7. Uncertainty quantification
+% Compute Bayesian posterior uncertainty. Plot A(2,1,k) +- 2sigma
+% against the true curve.
 
-result_unc = sidLTVdisc(X_tv, U_tv, 'Lambda', 1e4, 'Uncertainty', true);
+result_unc = sidLTVdisc(X_tv, U_tv, 'Lambda', 'auto', 'Uncertainty', true);
+fprintf('Noise variance: %.4e\n', result_unc.NoiseVariance);
+fprintf('Degrees of freedom: %.1f\n', result_unc.DegreesOfFreedom);
 
-fprintf('\nUncertainty results:\n');
-fprintf('  Noise covariance estimated: %d\n', result_unc.NoiseCovEstimated);
-fprintf('  Noise variance (trace/p):   %.6f\n', result_unc.NoiseVariance);
-fprintf('  Degrees of freedom:         %.1f\n', result_unc.DegreesOfFreedom);
-fprintf('  NoiseCov:\n');  disp(result_unc.NoiseCov);
-
-% Plot A(1,1,k) with +/-2 sigma uncertainty band
-a11     = squeeze(result_unc.A(1,1,:));
-a11_std = squeeze(result_unc.AStd(1,1,:));
-kk = (1:N)';
+a21 = squeeze(result_unc.A(2, 1, :));
+a21_std = squeeze(result_unc.AStd(2, 1, :));
 
 figure;
-fill([kk; flipud(kk)], [a11 - 2*a11_std; flipud(a11 + 2*a11_std)], ...
-    [0.8 0.8 1], 'EdgeColor', 'none', 'DisplayName', '\pm 2\sigma');
+fill([kk; flipud(kk)], ...
+    [a21 - 2*a21_std; flipud(a21 + 2*a21_std)], ...
+    [0.85 0.85 1], 'EdgeColor', 'none', ...
+    'DisplayName', '\pm 2\sigma');
 hold on;
-plot(kk, a11, 'b', 'LineWidth', 1.5, 'DisplayName', 'Recovered A_{11}(k)');
-plot(kk, a_ramp, 'k--', 'LineWidth', 1.5, 'DisplayName', 'True A_{11}(k)');
+plot(kk, a21, 'b', 'LineWidth', 1.5, 'DisplayName', 'Recovered A(2,1,k)');
+plot(kk, A21_true, 'k--', 'LineWidth', 1.5, 'DisplayName', 'True');
+hold off;
 xlabel('Time step k');
-ylabel('A_{11}(k)');
-title('LTV Identification with Uncertainty Bands');
+ylabel('A(2,1,k)');
+title('LTV identification with uncertainty bands');
 legend('Location', 'southeast');
 grid on;
-hold off;
 
 runner__nCompleted = runner__nCompleted + 1;
-fprintf('  Section %d completed: Uncertainty quantification.\n', runner__nCompleted);
+fprintf('  Section %d completed: Uncertainty quantification.\n', ...
+    runner__nCompleted);
 
-%% Frozen transfer function with sidLTVdiscFrozen
-% Compute the instantaneous frequency response G(w,k) = (e^{jw}I - A(k))^{-1} B(k)
-% at selected time steps. When the LTV result includes uncertainty,
-% ResponseStd is propagated via first-order linearization.
+%% 8. Frozen transfer function with sidLTVdiscFrozen
+% Instantaneous frequency response at three time steps.
 
-kSteps = [1, round(N/2), N];
+kSteps = [1, round(N_tv / 2), N_tv];
 frz = sidLTVdiscFrozen(result_unc, 'TimeSteps', kSteps);
 
-fprintf('\nFrozen transfer function:\n');
-fprintf('  Method: %s\n', frz.Method);
-fprintf('  Response size: %s\n', mat2str(size(frz.Response)));
-fprintf('  ResponseStd available: %d\n', ~isempty(frz.ResponseStd));
+fprintf('Frozen response shape: %s\n', mat2str(size(frz.Response)));
+fprintf('ResponseStd available: %d\n', ~isempty(frz.ResponseStd));
 
-% Plot Bode magnitude at the three time steps
 figure;
 w = frz.Frequency;
 colors = {'b', 'r', [0 0.6 0]};
 for i = 1:length(kSteps)
     G_k = squeeze(frz.Response(:, 1, 1, i));
-    mag_dB = 20*log10(abs(G_k));
-    semilogx(w, mag_dB, 'Color', colors{i}, 'LineWidth', 1.5, ...
-        'DisplayName', sprintf('k = %d', kSteps(i)));
+    semilogx(w, 20*log10(abs(G_k)), 'Color', colors{i}, ...
+        'LineWidth', 1.5, 'DisplayName', sprintf('k = %d', kSteps(i)));
     hold on;
 end
-
-% Add +/-2 sigma band for the last time step
-G_last = squeeze(frz.Response(:, 1, 1, length(kSteps)));
-G_std  = squeeze(frz.ResponseStd(:, 1, 1, length(kSteps)));
-mag_upper = 20*log10(abs(G_last) + 2*G_std);
-mag_lower = 20*log10(max(abs(G_last) - 2*G_std, eps));
-fill([w; flipud(w)], [mag_lower; flipud(mag_upper)], ...
-    [0.8 1 0.8], 'EdgeColor', 'none', 'FaceAlpha', 0.5, ...
-    'HandleVisibility', 'off');
-% Re-plot the line on top
-semilogx(w, 20*log10(abs(G_last)), 'Color', colors{end}, 'LineWidth', 1.5, ...
-    'HandleVisibility', 'off');
-
+hold off;
 xlabel('Frequency (rad/sample)');
-ylabel('|G(w,k)| (dB)');
-title('Frozen Transfer Function at Selected Time Steps');
+ylabel('|G(\omega, k)| (dB)');
+title('Frozen transfer function at selected time steps');
 legend;
 grid on;
-hold off;
 
 runner__nCompleted = runner__nCompleted + 1;
-fprintf('  Section %d completed: %s.\n', ...
-    runner__nCompleted, 'Frozen transfer function with sidLTVdiscFrozen');
+fprintf('  Section %d completed: Frozen transfer function.\n', ...
+    runner__nCompleted);
 
-%% 6. Frequency-Based Lambda Tuning (no validation data needed)
-%
-% sidLTVdiscTune with 'Method','frequency' selects lambda by comparing
-% the COSMIC frozen transfer function against a non-parametric sidFreqMap
-% estimate. No validation data is required — only training data.
+%% 9. Frequency-based lambda tuning
+% Compare COSMIC's frozen TF against a non-parametric sidFreqMap
+% estimate and select the largest lambda whose posterior bands are
+% consistent.
 
-fprintf('\n--- Frequency-based lambda tuning ---\n');
-
-% Use a smaller lambda grid for speed in this demo
-grid_freq = logspace(1, 8, 12);
-[bestResult_freq, bestLambda_freq, info_freq] = sidLTVdiscTune(X, U, ...
-    'Method', 'frequency', 'LambdaGrid', grid_freq, 'SegmentLength', 20);
-
-fprintf('Frequency-tuned lambda: %.2e (consistency: %.1f%%)\n', ...
-    bestLambda_freq, info_freq.bestFraction * 100);
+grid_freq = logspace(-3, 4, 12);
+[bestResult_freq, bestLambda_freq, info_freq] = sidLTVdiscTune( ...
+    X_all, U_all, 'Method', 'frequency', 'LambdaGrid', grid_freq, ...
+    'SegmentLength', 20);
+fprintf('Frequency-tuned lambda:  %.2e\n', bestLambda_freq);
 fprintf('Validation-tuned lambda: %.2e\n', bestLambda);
 
-% Plot consistency fraction vs lambda
-figure;
-semilogx(info_freq.lambdaGrid, info_freq.fractions * 100, 'b.-', 'MarkerSize', 10);
-hold on;
-semilogx(bestLambda_freq, info_freq.bestFraction * 100, 'ro', 'MarkerSize', 12, 'LineWidth', 2);
-plot(xlim, [90 90], 'k--');  % 90% threshold line
-hold off;
-xlabel('\lambda');
-ylabel('Consistency fraction (%)');
-title('Frequency-Response Consistency Scoring');
-legend('Consistency', 'Selected \lambda', '90% threshold');
-grid on;
-
-fprintf('\nFrequency-based tuning complete.\n');
-
 runner__nCompleted = runner__nCompleted + 1;
-fprintf('  Section %d completed: %s.\n', ...
-    runner__nCompleted, ...
-    '6. Frequency-Based Lambda Tuning (no validation data needed)');
+fprintf('  Section %d completed: Frequency-based lambda tuning.\n', ...
+    runner__nCompleted);
 
-%% Model validation with sidCompare and sidResidual
-% Compare COSMIC model predictions against the training data.
-
-comp = sidCompare(result_auto, X_tv, U_tv);
-fprintf('\nCOSMIC model fit (per state component):\n');
+%% 10. Model validation with sidCompare and sidResidual
+comp = sidCompare(result_tv, X_tv, U_tv);
+fprintf('COSMIC model fit (per state component):\n');
 for ch = 1:p
     fprintf('  x_%d: %.1f%%\n', ch, comp.Fit(ch));
 end
 
-% Residual diagnostics
-resid = sidResidual(result_auto, X_tv, U_tv);
+resid = sidResidual(result_tv, X_tv, U_tv);
 if resid.WhitenessPass
     fprintf('Residual whiteness test: PASS\n');
 else
@@ -340,8 +286,70 @@ else
 end
 
 runner__nCompleted = runner__nCompleted + 1;
-fprintf('  Section %d completed: %s.\n', ...
-    runner__nCompleted, 'Model validation with sidCompare and sidResidual');
+fprintf('  Section %d completed: Model validation.\n', runner__nCompleted);
+
+%% 11. Weakly-nonlinear Duffing oscillator
+% The cubic stiffness means the effective stiffness depends on
+% displacement amplitude. We drive the plant with a ramped-amplitude
+% white force (0.5 -> 8 over the record) so typical displacement
+% grows through the record, and fit an LTV model. With a small
+% manual lambda (0.1), COSMIC recovers an A(2,1) that drifts toward
+% more negative values (stiffer apparent spring) as amplitude grows.
+
+rng(500);
+
+m_nl     = 1.0;
+k_lin    = 100.0;
+k_cubic  = 1e5;
+c_nl     = 2.0;
+F_nl     = 1.0;
+
+N_nl = 400;  L_nl = 12;
+amp_profile = linspace(0.5, 8.0, N_nl)';
+
+X_nl = zeros(N_nl + 1, p, L_nl);
+U_nl = zeros(N_nl, q, L_nl);
+for l = 1:L_nl
+    U_nl(:, 1, l) = amp_profile .* randn(N_nl, 1);
+    x_nl = util_msd_nl(m_nl, k_lin, k_cubic, c_nl, F_nl, Ts, ...
+                       U_nl(:, 1, l), [], 4);
+    X_nl(:, :, l) = x_nl;
+end
+
+% Auto-lambda is over-regularising on this dataset; use a small manual
+% lambda to let COSMIC track the amplitude-dependent drift.
+result_nl = sidLTVdisc(X_nl, U_nl, 'Lambda', 0.1);
+
+[Ad_linear, ~] = util_msd(m_nl, k_lin, c_nl, F_nl, Ts);
+fprintf('Linear Ad(2,1) (small amplitude): %.4f\n', Ad_linear(2, 1));
+fprintf('COSMIC A(2,1) early (small x):    %.4f\n', ...
+    mean(result_nl.A(2, 1, 1:N_nl/4)));
+fprintf('COSMIC A(2,1) late  (large x):    %.4f\n', ...
+    mean(result_nl.A(2, 1, end - N_nl/4 + 1:end)));
+
+figure;
+subplot(2, 1, 1);
+plot((1:N_nl)', amp_profile, 'r');
+ylabel('Excitation amplitude (N)');
+title('Duffing oscillator: amplitude grows over the record');
+grid on;
+
+subplot(2, 1, 2);
+plot((1:N_nl)', squeeze(result_nl.A(2, 1, :)), 'b', ...
+    'DisplayName', 'COSMIC A(2,1,k)');
+hold on;
+plot([1 N_nl], [Ad_linear(2,1) Ad_linear(2,1)], 'k--', ...
+    'DisplayName', 'Small-amplitude linearisation');
+hold off;
+xlabel('Time step k');
+ylabel('A(2,1,k)');
+title('Recovered local linearisation stiffens with amplitude');
+legend('Location', 'southwest');
+grid on;
+
+runner__nCompleted = runner__nCompleted + 1;
+fprintf('  Section %d completed: Weakly-nonlinear Duffing oscillator.\n', ...
+    runner__nCompleted);
 
 fprintf('exampleLTVdisc: %d/%d sections completed\n', ...
     runner__nCompleted, runner__nCompleted);
