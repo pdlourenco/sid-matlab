@@ -526,7 +526,7 @@ When used together, `sidSpectrogram` on `u` and `y` alongside `sidFreqMap` on th
 | `SubSegmentLength` | `'welch'` only | positive integer | `floor(L/4.5)` (matches `tfestimate` default) |
 | `SubOverlap` | `'welch'` only | non-negative integer | `floor(SubSegmentLength / 2)` |
 | `Window` | `'welch'` only | `'hann'`, `'hamming'`, or vector | `'hann'` |
-| `NFFT` | `'welch'` only | positive integer | `max(256, 2^nextpow2(SubSegmentLength))` |
+| `NFFT` | `'welch'` only | positive integer, `NFFT ≥ SubSegmentLength` | `max(256, 2^nextpow2(SubSegmentLength))` |
 
 **Multi-trajectory input:** When `y` is `(N × n_y × L)` and `u` is `(N × n_u × L)`, spectral estimates within each segment are ensemble-averaged across trajectories before forming transfer function ratios. For variable-length trajectories, pass cell arrays. At each segment `k`, only trajectories that span segment `k` contribute to the ensemble. This directly parallels COSMIC's multi-trajectory aggregation (§8.3.2), ensuring consistent use of the same data across time-domain and frequency-domain analyses.
 
@@ -714,7 +714,7 @@ The key difference: `sidFreqMap` always produces time-varying output. Setting `S
 | Signal | `x` | `(N × n_ch)` real matrix | required |
 | Window length | `L` | positive integer | `256` |
 | Overlap | `P` | integer, `0 ≤ P < L` | `floor(L/2)` |
-| NFFT | `nfft` | positive integer | `max(256, 2^nextpow2(L))` |
+| NFFT | `nfft` | positive integer, `nfft ≥ L` | `max(256, 2^nextpow2(L))` |
 | Window function | `win` | `'hann'`, `'hamming'`, `'rect'`, or `(L × 1)` vector | `'hann'` |
 | Sample time | `Ts` | positive scalar (seconds) | `1.0` |
 

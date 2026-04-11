@@ -355,6 +355,47 @@ class TestFreqMapWelch:
 
         np.testing.assert_allclose(map_result.time, spec_result.time, atol=1e-12)
 
+    # ------------------------------------------------------------------
+    # Regression: NFFT < SubSegmentLength must raise (silent truncation guard)
+    # ------------------------------------------------------------------
+    @pytest.mark.parametrize("nfft", [128, 256, 511])
+    def test_welch_error_nfft_lt_sub_segment_length(self, nfft: int) -> None:
+        """NFFT smaller than SubSegmentLength -> SidError code='invalid_nfft'.
+
+        Regression for a latent bug where ``np.fft.fft(..., n=nfft)`` silently
+        truncated each sub-segment to the first ``nfft`` samples, producing a
+        wrong Welch periodogram with no diagnostic. See SPEC.md S6.2 table.
+        """
+        rng = np.random.default_rng(0)
+        y = rng.standard_normal((1000, 1))
+        u = rng.standard_normal((1000, 1))
+        with pytest.raises(SidError) as excinfo:
+            freq_map(
+                y,
+                u,
+                algorithm="welch",
+                segment_length=1000,
+                sub_segment_length=512,
+                nfft=nfft,
+            )
+        assert excinfo.value.code == "invalid_nfft"
+
+    def test_welch_nfft_equal_sub_segment_length(self) -> None:
+        """NFFT == SubSegmentLength must be accepted (boundary case)."""
+        rng = np.random.default_rng(0)
+        y = rng.standard_normal((1000, 1))
+        u = rng.standard_normal((1000, 1))
+        result = freq_map(
+            y,
+            u,
+            algorithm="welch",
+            segment_length=1000,
+            sub_segment_length=512,
+            nfft=512,
+        )
+        # One-sided grid: nfft // 2 = 256 bins
+        assert len(result.frequency) == 256
+
 
 class TestFreqMapGeneral:
     """General tests for freq_map (cross-algorithm, error handling)."""

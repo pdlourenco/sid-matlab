@@ -199,6 +199,11 @@ function result = sidFreqMap(y, u, varargin)
         if ~isscalar(Psub) || Psub < 0 || Psub >= Lsub || Psub ~= round(Psub)
             error('sid:invalidSubOverlap', 'SubOverlap must be in [0, SubSegmentLength-1].');
         end
+        if ~isscalar(nfft) || nfft < Lsub || nfft ~= round(nfft)
+            error('sid:invalidNFFT', ...
+                'NFFT (%d) must be an integer >= SubSegmentLength (%d).', ...
+                nfft, Lsub);
+        end
 
         M = [];  % not applicable for Welch
     end
