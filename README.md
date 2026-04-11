@@ -61,6 +61,7 @@ See [SPEC.md](spec/SPEC.md) for the full mathematical derivation.
 ## Documentation
 
 - [**SPEC.md**](spec/SPEC.md) — Full algorithm specification with mathematical derivations
+- [**EXAMPLES.md**](spec/EXAMPLES.md) — Example-suite specification: binding plant catalog, helper API, and per-example structure that every language port must conform to
 - [**Roadmap**](docs/roadmap.md) — Development phases and planned features
 - [**COSMIC uncertainty derivation**](spec/cosmic/uncertainty_derivation.md) — Bayesian posterior covariance for LTV identification
 - [**COSMIC online recursion**](spec/cosmic/online_recursion.md) — Recursive/streaming formulation of the COSMIC algorithm

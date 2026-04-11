@@ -139,21 +139,22 @@ IPython/Jupyter. Access fields with dot notation: `result.response`,
 
 Examples are provided as **Jupyter notebooks** in [`python/examples/`](examples/README.md).
 Each notebook mirrors a MATLAB example script, combining narrative, code, and
-inline plots:
+inline plots. Every example is built on a physical spring-mass-damper plant
+from the shared catalog defined in [`spec/EXAMPLES.md`](../spec/EXAMPLES.md):
 
-| Notebook | Description |
-|---|---|
-| `example_siso.ipynb` | Basic SISO frequency response estimation |
-| `example_etfe.ipynb` | Empirical transfer function estimate |
-| `example_freq_dep_res.ipynb` | Frequency-dependent resolution |
-| `example_coherence.ipynb` | Coherence analysis and signal quality |
-| `example_method_comparison.ipynb` | Comparing BT, BTFDR, and ETFE |
-| `example_mimo.ipynb` | Multi-input multi-output systems |
-| `example_freq_map.ipynb` | Time-varying frequency response maps |
-| `example_spectrogram.ipynb` | Short-time FFT spectrogram |
-| `example_ltv_disc.ipynb` | LTV state-space identification (COSMIC) |
-| `example_multi_trajectory.ipynb` | Multi-trajectory ensemble averaging |
-| `example_output_cosmic.ipynb` | Partial-observation Output-COSMIC |
+| Notebook | Plant | Functions |
+|---|---|---|
+| `example_siso.ipynb` | 1-DoF SMD (`m=1, k=100, c=2`, `ω_n=10 rad/s`) | `freq_bt`, `bode_plot`, `detrend`, `residual`, `compare` |
+| `example_etfe.ipynb` | Same 1-DoF SMD as `siso` | `freq_etfe`, `bode_plot`, `spectrum_plot` |
+| `example_freq_dep_res.ipynb` | 3-mass chain with three closely-spaced modes | `freq_bt`, `freq_btfdr`, `bode_plot` |
+| `example_coherence.ipynb` | 2-mass chain with colored force disturbance at mass 2 | `freq_bt`, `bode_plot` (with coherence) |
+| `example_method_comparison.ipynb` | Same 1-DoF SMD as `siso` | `freq_bt`, `freq_btfdr`, `freq_etfe`, `compare` |
+| `example_mimo.ipynb` | 2-mass chain, 2-in/2-out | `freq_bt` (MIMO mode) |
+| `example_freq_map.ipynb` | 2-mass LTI + continuous/discrete LTV + Duffing hardening SDOF | `freq_map`, `map_plot` |
+| `example_spectrogram.ipynb` | SDOF (`ω_n ≈ 32 Hz`) driven by a 20→60 Hz chirp force | `spectrogram`, `spectrogram_plot` |
+| `example_ltv_disc.ipynb` | 1-DoF LTV (ramping stiffness) **plus** Duffing linearization | `ltv_disc`, `ltv_disc_tune`, `ltv_disc_frozen` |
+| `example_multi_trajectory.ipynb` | 2-mass ensemble + step-change LTV + chirp-in-noise + LTV/`freq_map` consistency | `freq_bt`, `freq_map`, `spectrogram`, `ltv_disc` |
+| `example_output_cosmic.ipynb` | 2-mass chain, position-only measurements (velocities hidden) | `freq_bt`, `model_order`, `ltv_disc_io` |
 
 Launch any notebook locally:
 

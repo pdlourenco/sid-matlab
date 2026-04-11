@@ -207,12 +207,10 @@ function result = callSidFunction(funcName, input, params)
         case 'sidLTIfreqIO'
             [A0, B0] = sidLTIfreqIO(input.Y, input.U, input.H);
             result = struct('A0', A0, 'B0', B0);
-        case {'sidTestMSD', 'util_msd'}
-            % util_msd (in matlab/examples/) is the current spring-
-            % mass-damper helper; sidTestMSD is accepted as an alias
-            % for JSON files generated before the 2026-04-12 helper
-            % consolidation. Both dispatch to util_msd which is
-            % bit-identical to sidTestMSD at the reference params.
+        case 'util_msd'
+            % util_msd (in matlab/examples/) is the canonical spring-
+            % mass-damper plant helper. See spec/EXAMPLES.md section 2.1
+            % for its binding contract.
             [Ad, Bd] = util_msd(input.m, input.k_spring, ...
                                 input.c_damp, input.F, input.Ts);
             result = struct('Ad', Ad, 'Bd', Bd);

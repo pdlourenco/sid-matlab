@@ -374,6 +374,15 @@ def load_reference(name: str) -> dict:
 
 ## Examples (Jupyter Notebooks)
 
+> **⚠ Read this first.** The binding contract for every example is
+> [`spec/EXAMPLES.md`](../spec/EXAMPLES.md). It defines the physical plant
+> catalog, the `util_msd*` helper API, and — for every example — the required
+> pedagogical sections, the `sid.*` call graph, and the required plots and
+> prints. Python notebooks and MATLAB scripts are parallel implementations of
+> the same spec. If you are porting, adding, or modifying an example, start
+> there; the conventions in this file cover only the Python-specific notebook
+> mechanics.
+
 Examples live in `python/examples/` as **Jupyter notebooks** (`.ipynb`). Each
 MATLAB example script (`matlab/examples/example*.m`) maps to one notebook.
 Notebooks are the Python equivalent of MATLAB's `%%`-sectioned scripts — they
