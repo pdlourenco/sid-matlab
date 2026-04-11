@@ -459,6 +459,11 @@ def freq_map(
                 "invalid_sub_overlap",
                 "SubOverlap must be in [0, SubSegmentLength-1].",
             )
+        if nfft_val < Lsub:
+            raise SidError(
+                "invalid_nfft",
+                f"NFFT ({nfft_val}) must be >= SubSegmentLength ({Lsub}).",
+            )
 
     # ---- Outer segmentation (SPEC.md S6.2) ----
     step = L - P
