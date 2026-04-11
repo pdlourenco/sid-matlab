@@ -76,14 +76,18 @@ def _continuous_ss(
     K, C = _build_K_C(k_spring, c_damp)
     M_mat = np.diag(m)
     Minv = np.linalg.solve(M_mat, np.eye(n))
-    Ac = np.block([
-        [np.zeros((n, n)), np.eye(n)],
-        [-Minv @ K, -Minv @ C],
-    ])
-    Bc = np.block([
-        [np.zeros((n, F.shape[1]))],
-        [Minv @ F],
-    ])
+    Ac = np.block(
+        [
+            [np.zeros((n, n)), np.eye(n)],
+            [-Minv @ K, -Minv @ C],
+        ]
+    )
+    Bc = np.block(
+        [
+            [np.zeros((n, F.shape[1]))],
+            [Minv @ F],
+        ]
+    )
     return Ac, Bc
 
 
@@ -100,6 +104,12 @@ def util_msd(
     Ts: float,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Discretize an LTI n-mass spring-damper chain with exact zero-order hold.
+
+    Builds the continuous-time state-space model for an n-mass chain in the
+    classic wall + masses-in-series topology and discretizes it with the
+    matrix exponential. The discrete pair ``(Ad, Bd)`` exactly reproduces the
+    continuous response at the sample instants under a zero-order hold on
+    the input.
 
     Parameters
     ----------
@@ -123,6 +133,12 @@ def util_msd(
     Bd : ndarray, shape ``(2n, q)``
         Discrete input matrix.
 
+    Raises
+    ------
+    ValueError
+        If ``m`` is not 1-D, if ``k_spring`` or ``c_damp`` does not match
+        ``m`` in shape, or if ``F``'s first dimension does not equal ``n``.
+
     Examples
     --------
     Single-DoF oscillator (resonance at ``sqrt(k/m) = 10`` rad/s):
@@ -137,6 +153,28 @@ def util_msd(
     ... )
     >>> Ad.shape, Bd.shape
     ((2, 2), (2, 1))
+
+    Notes
+    -----
+    **Algorithm:**
+
+    1. Build the tridiagonal stiffness and damping matrices ``K``, ``C``
+       from the per-spring coefficients.
+    2. Assemble ``Ac = [[0, I], [-M^-1 K, -M^-1 C]]`` and
+       ``Bc = [[0], [M^-1 F]]``.
+    3. Discretize via ``Ad = expm(Ac * Ts)`` and
+       ``Bd = Ac \\ (Ad - I) @ Bc``.
+
+    **Specification:** (Example utility -- not in SPEC.md)
+
+    See Also
+    --------
+    util_msd_ltv : Same chain with per-step time-varying parameters.
+    util_msd_nl : Nonlinear simulation with Duffing cubic stiffness.
+
+    Changelog
+    ---------
+    2026-04-10 : First version by Pedro Lourenco.
     """
     m = np.asarray(m, dtype=np.float64)
     k_spring = np.asarray(k_spring, dtype=np.float64)
@@ -167,6 +205,7 @@ def util_msd_ltv(
     c_damp: np.ndarray,
     F: np.ndarray,
     Ts: float,
+    *,
     N: int | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Discretize an LTV n-mass spring-damper chain with per-step parameters.
@@ -175,7 +214,7 @@ def util_msd_ltv(
     2-D with shape ``(n, N)`` (time-varying). ``F`` may be ``(n, q)`` or
     ``(n, q, N)``. ``N`` is inferred from the first 2-D input; if all inputs
     are 1-D, ``N`` must be passed explicitly and the LTI result is replicated
-    ``N`` times.
+    ``N`` times — useful for feeding a stationary plant into LTV identifiers.
 
     Parameters
     ----------
@@ -191,12 +230,21 @@ def util_msd_ltv(
         Sample time (s).
     N : int, optional
         Number of time steps. Required only when all other inputs are
-        time-invariant (1-D / 2-D).
+        time-invariant. Default is ``None``.
 
     Returns
     -------
     Ad : ndarray, shape ``(2n, 2n, N)``
+        Stack of per-step discrete dynamics matrices.
     Bd : ndarray, shape ``(2n, q, N)``
+        Stack of per-step discrete input matrices.
+
+    Raises
+    ------
+    ValueError
+        If any input has inconsistent shape, if the inferred ``N`` disagrees
+        across inputs, or if all inputs are time-invariant and ``N`` is not
+        provided.
 
     Examples
     --------
@@ -213,6 +261,28 @@ def util_msd_ltv(
     >>> Ad, Bd = util_msd_ltv(m, k, c, F, Ts=0.01)
     >>> Ad.shape, Bd.shape
     ((4, 4, 200), (4, 1, 200))
+
+    Notes
+    -----
+    **Algorithm:**
+
+    1. Infer ``N`` from the first 2-D (or 3-D) input; fall back to the
+       caller-supplied ``N`` when everything is time-invariant.
+    2. Fast path: if nothing actually varies, call :func:`util_msd` once
+       and broadcast along the time axis.
+    3. Otherwise loop over ``k = 0..N-1``, slicing each time-varying input
+       and calling :func:`util_msd` per step.
+
+    **Specification:** (Example utility -- not in SPEC.md)
+
+    See Also
+    --------
+    util_msd : Scalar LTI call used internally per time step.
+    util_msd_nl : Nonlinear simulation with Duffing cubic stiffness.
+
+    Changelog
+    ---------
+    2026-04-10 : First version by Pedro Lourenco.
     """
     m = np.asarray(m, dtype=np.float64)
     k_spring = np.asarray(k_spring, dtype=np.float64)
@@ -250,9 +320,7 @@ def util_msd_ltv(
         if inferred_N is None:
             inferred_N = candidate
         elif candidate != inferred_N:
-            raise ValueError(
-                f"Inconsistent N: {source}={candidate} vs earlier={inferred_N}"
-            )
+            raise ValueError(f"Inconsistent N: {source}={candidate} vs earlier={inferred_N}")
 
     if m.ndim == 2:
         _check_N(m.shape[1], "m")
@@ -302,6 +370,7 @@ def util_msd_nl(
     F: np.ndarray,
     Ts: float,
     u: np.ndarray,
+    *,
     x0: np.ndarray | None = None,
     substeps: int = 1,
 ) -> np.ndarray:
@@ -337,17 +406,24 @@ def util_msd_nl(
     Ts : float
         Sample time (s).
     u : ndarray, shape ``(N, q)`` or ``(N,)``
-        Input signal (``q`` inputs, ``N`` samples).
+        Input signal (``q`` inputs, ``N`` samples). A 1-D array is treated
+        as a single-input ``(N, 1)`` signal.
     x0 : ndarray, shape ``(2n,)``, optional
-        Initial state ``[positions; velocities]``. Defaults to zeros.
-    substeps : int, default 1
-        RK4 sub-steps per sample ``Ts``. Use ``>=4`` for strong
-        nonlinearities or large ``Ts``.
+        Initial state ``[positions; velocities]``. Default is zeros.
+    substeps : int, optional
+        RK4 sub-steps per sample ``Ts``. Use ``>= 4`` for strong
+        nonlinearities or large ``Ts``. Default is ``1``.
 
     Returns
     -------
     x : ndarray, shape ``(N + 1, 2n)``
         State trajectory. Row ``k`` is the state at time ``k * Ts``.
+
+    Raises
+    ------
+    ValueError
+        If any parameter shape is inconsistent, if ``u`` has a different
+        number of columns than ``F``, or if ``substeps < 1``.
 
     Examples
     --------
@@ -369,6 +445,29 @@ def util_msd_nl(
     ... )
     >>> x.shape
     (501, 2)
+
+    Notes
+    -----
+    **Algorithm:**
+
+    1. Assemble per-spring linear, cubic, and damping contributions into a
+       net force on each mass (chain topology — each internal spring
+       contributes to its two adjacent masses with opposite signs).
+    2. Evaluate ``d state / dt = [velocities; M^-1 * net_force]`` as the
+       continuous-time RHS.
+    3. Integrate with classic RK4 at step ``Ts / substeps``, holding ``u``
+       constant over the full sample interval.
+
+    **Specification:** (Example utility -- not in SPEC.md)
+
+    See Also
+    --------
+    util_msd : LTI discretization of the same chain topology.
+    util_msd_ltv : LTV discretization with per-step parameter trajectories.
+
+    Changelog
+    ---------
+    2026-04-10 : First version by Pedro Lourenco.
     """
     m = np.asarray(m, dtype=np.float64)
     k_lin = np.asarray(k_lin, dtype=np.float64)
@@ -391,9 +490,7 @@ def util_msd_nl(
     if u.ndim == 1:
         u = u.reshape(-1, 1)
     if u.shape[1] != F.shape[1]:
-        raise ValueError(
-            f"u has {u.shape[1]} inputs but F has {F.shape[1]} columns"
-        )
+        raise ValueError(f"u has {u.shape[1]} inputs but F has {F.shape[1]} columns")
     if substeps < 1:
         raise ValueError(f"substeps must be >= 1, got {substeps}")
 

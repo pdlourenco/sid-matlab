@@ -1,75 +1,75 @@
 # sid Examples
 
-Runnable scripts demonstrating the full functionality of the sid toolbox. Each example is self-contained and can be run directly in MATLAB or Octave.
+Runnable scripts demonstrating the full functionality of the sid toolbox.
+Each example is self-contained and can be run directly in MATLAB or Octave.
+
+## Why spring-mass-damper plants?
+
+Every example in this directory is built around a **spring-mass-damper (SMD)
+chain** — one, two, or three lumped masses connected by linear springs and
+viscous dampers to a wall. The discrete-time state-space model is built with
+`util_msd` (exact zero-order-hold via matrix exponential), its time-varying
+variant `util_msd_ltv`, or the nonlinear Duffing simulator `util_msd_nl`, all
+defined as sibling files in this directory.
+
+Using a single physical plant family across the tutorials keeps the narrative
+concrete and cumulative. Instead of arbitrary `filter` coefficients or
+hand-crafted state-space matrices, the reader works through a progression of
+plants they can picture: a 1-DoF oscillator, a 2-mass chain with cross-coupling
+through a shared spring, a 3-mass chain with three closely-spaced modes, a
+structure whose stiffness drifts thermally, a structure that snaps, and
+finally a Duffing-style nonlinear oscillator whose apparent resonance depends
+on amplitude.
+
+The binding specification for every example is [`spec/EXAMPLES.md`](../../spec/EXAMPLES.md).
+These MATLAB scripts are the MATLAB port of that specification; the Python
+Jupyter notebooks in `python/examples/` are the Python port. Both ports share
+the same plant parameters, section order, and `sid*` function call graph.
 
 ## Example Index
 
-| Example | Description | Functions |
+| Example | Plant | Functions demonstrated |
 |---|---|---|
-| [`exampleSISO`](exampleSISO.m) | Basic SISO frequency response estimation | `sidFreqBT`, `sidBodePlot`, `sidSpectrumPlot` |
-| [`exampleETFE`](exampleETFE.m) | Empirical transfer function estimate | `sidFreqETFE`, `sidBodePlot`, `sidSpectrumPlot` |
-| [`exampleFreqDepRes`](exampleFreqDepRes.m) | Frequency-dependent resolution | `sidFreqBTFDR`, `sidFreqBT`, `sidBodePlot` |
-| [`exampleCoherence`](exampleCoherence.m) | Coherence analysis and signal quality | `sidFreqBT`, `sidBodePlot` |
-| [`exampleMethodComparison`](exampleMethodComparison.m) | Comparing BT, BTFDR, and ETFE | `sidFreqBT`, `sidFreqBTFDR`, `sidFreqETFE` |
-| [`exampleMIMO`](exampleMIMO.m) | Multi-input multi-output systems | `sidFreqBT` (MIMO mode) |
-| [`exampleFreqMap`](exampleFreqMap.m) | Time-varying frequency response maps | `sidFreqMap`, `sidMapPlot` |
-| [`exampleSpectrogram`](exampleSpectrogram.m) | Short-time FFT spectrogram | `sidSpectrogram`, `sidSpectrogramPlot` |
-| [`exampleLTVdisc`](exampleLTVdisc.m) | LTV state-space identification | `sidLTVdisc`, `sidLTVdiscTune`, `sidLTVdiscFrozen` |
-| [`exampleMultiTrajectory`](exampleMultiTrajectory.m) | Multi-trajectory ensemble averaging | `sidFreqBT`, `sidFreqMap`, `sidSpectrogram`, `sidLTVdisc` |
-| [`exampleOutputCOSMIC`](exampleOutputCOSMIC.m) | LTV identification from partial observations | `sidFreqBT`, `sidModelOrder`, `sidLTVdiscIO` |
+| [`exampleSISO`](exampleSISO.m) | 1-DoF SDOF (`m=1, k=100, c=2`, `ω_n=10 rad/s`, `ζ=0.1`) | `sidFreqBT`, `sidBodePlot`, `sidSpectrumPlot`, `sidDetrend`, `sidResidual`, `sidCompare` |
+| [`exampleETFE`](exampleETFE.m) | Same 1-DoF SDOF as `exampleSISO` | `sidFreqETFE`, `sidBodePlot`, `sidSpectrumPlot` |
+| [`exampleFreqDepRes`](exampleFreqDepRes.m) | 3-mass chain (`k=[300,200,100]`, modes at 6.4 / 15.1 / 25.1 rad/s) | `sidFreqBT`, `sidFreqBTFDR`, `sidBodePlot` |
+| [`exampleCoherence`](exampleCoherence.m) | 2-mass chain with colored force disturbance at mass 2 | `sidFreqBT`, `sidBodePlot` (with coherence) |
+| [`exampleMethodComparison`](exampleMethodComparison.m) | Same 1-DoF SDOF as `exampleSISO` | `sidFreqBT`, `sidFreqBTFDR`, `sidFreqETFE`, `sidCompare` |
+| [`exampleMIMO`](exampleMIMO.m) | 2-mass chain, 2 force inputs and 2 position outputs | `sidFreqBT` (MIMO mode) |
+| [`exampleFreqMap`](exampleFreqMap.m) | 2-mass LTI + continuous LTV (`k₁` ramp) + discrete LTV (step change) + Duffing hardening SDOF | `sidFreqMap`, `sidMapPlot` |
+| [`exampleSpectrogram`](exampleSpectrogram.m) | SDOF (`ω_n ≈ 32 Hz`, `Fs=1000 Hz`) driven by a 20→60 Hz chirp force | `sidSpectrogram`, `sidSpectrogramPlot` |
+| [`exampleLTVdisc`](exampleLTVdisc.m) | 1-DoF LTV (ramping stiffness) **plus** Duffing linearization | `sidLTVdisc`, `sidLTVdiscTune`, `sidLTVdiscFrozen`, `sidCompare`, `sidResidual` |
+| [`exampleMultiTrajectory`](exampleMultiTrajectory.m) | 2-mass ensemble + step-change LTV + chirp-response spectrogram + LTV / `sidFreqMap` consistency | `sidFreqBT`, `sidFreqMap`, `sidSpectrogram`, `sidLTVdisc` (all ensemble mode) |
+| [`exampleOutputCOSMIC`](exampleOutputCOSMIC.m) | 2-mass chain, position-only measurements (velocities hidden) | `sidFreqBT`, `sidModelOrder`, `sidLTVdiscIO` |
 
-## Descriptions
+## Helper API
 
-### exampleSISO
+The three `util_msd*` helpers are specified in
+[`spec/EXAMPLES.md` §2](../../spec/EXAMPLES.md) and implemented in:
 
-Estimates the frequency response of a first-order SISO system using `sidFreqBT` (Blackman-Tukey). Demonstrates Bode diagram and noise spectrum plotting with confidence bands, the effect of window size on the bias-variance trade-off, and time-series mode for output spectrum estimation.
-
-### exampleETFE
-
-Introduces `sidFreqETFE`, which estimates the frequency response as the ratio of output and input DFTs. Shows the high-resolution but high-variance nature of the raw ETFE, how the `'Smoothing'` parameter reduces variance, exact recovery of a pure delay (noiseless FIR), and time-series periodogram mode. Also demonstrates custom frequency grids and Hz-unit plotting.
-
-### exampleFreqDepRes
-
-Demonstrates `sidFreqBTFDR`, which adapts the smoothing window size at each frequency. Uses a second-order resonant system (poles at `0.9*exp(+/-j*pi/4)`) to show why a fixed window struggles with sharp peaks. Compares scalar and per-frequency resolution vectors, and overlays the true system for validation.
-
-### exampleCoherence
-
-Shows how squared coherence quantifies estimation quality across frequencies. Uses an ARMA system with colored noise to produce frequency-dependent coherence. Demonstrates confidence band customization via the `'Confidence'` option, and compares high-noise vs low-noise scenarios.
-
-### exampleMethodComparison
-
-Head-to-head comparison of `sidFreqBT`, `sidFreqBTFDR`, and `sidFreqETFE` on the same data. Overlays all estimates on one plot with the true system response. Covers logarithmic frequency grids, noise spectrum comparison, and time-series spectrum estimation across methods.
-
-### exampleMIMO
-
-Demonstrates MIMO frequency response estimation with `sidFreqBT`. Shows the 3D `Response` array structure for a 2-output, 1-input system, manual per-channel Bode plotting, the Hermitian noise spectral matrix with positive semi-definiteness checking, and a full 2-output, 2-input transfer matrix. Notes the absence of coherence and uncertainty for MIMO.
-
-### exampleFreqMap
-
-Uses `sidFreqMap` to analyze how a system's frequency response evolves over time. Starts with an LTI baseline (flat map), then simulates a time-varying system with a drifting pole. Compares the Blackman-Tukey and Welch algorithms, explores segment length and overlap tuning, and demonstrates time-series spectrum maps. All visualizations use `sidMapPlot`.
-
-### exampleSpectrogram
-
-Demonstrates `sidSpectrogram` for time-frequency analysis of signals. Generates a chirp signal (frequency sweep) and visualizes it with `sidSpectrogramPlot`. Explores the window length trade-off between time and frequency resolution, compares Hann, Hamming, and rectangular windows, and shows multi-channel and log-frequency-scale plotting.
-
-### exampleLTVdisc
-
-Comprehensive demonstration of `sidLTVdisc` (COSMIC algorithm) for identifying time-varying state-space models `x(k+1) = A(k)x(k) + B(k)u(k)`. Covers LTI system recovery, LTV identification with a ramping pole, automatic vs manual regularization (`'Lambda'`), multi-trajectory benefits, and validation-based tuning via `sidLTVdiscTune`. Also demonstrates Bayesian uncertainty quantification (`'Uncertainty', true`) with confidence bands on recovered parameters, and frozen transfer function computation via `sidLTVdiscFrozen` with propagated uncertainty.
-
-### exampleMultiTrajectory
-
-Demonstrates how multiple independent trajectories improve estimation quality through ensemble averaging. Generates L=10 trajectories of a second-order system to show variance reduction (~1/sqrt(L)) in `sidFreqBT` confidence bands. Also shows multi-trajectory benefits for time-varying frequency maps (`sidFreqMap`), spectrograms (`sidSpectrogram`), and LTV state-space identification (`sidLTVdisc`).
-
-### exampleOutputCOSMIC
-
-End-to-end workflow for identifying time-varying systems from partial observations using Output-COSMIC (`sidLTVdiscIO`). Starts with a 4th-order system where only 2 of 4 states are measured. Demonstrates the complete pipeline: frequency response estimation (`sidFreqBT`), model order determination via Hankel SVD (`sidModelOrder`), observation matrix construction, and LTV identification with alternating minimisation. Plots recovered dynamics, estimated vs true states (both observed and hidden), and convergence history.
+- [`util_msd.m`](util_msd.m) — exact ZOH discretization of an n-mass chain.
+- [`util_msd_ltv.m`](util_msd_ltv.m) — per-step `(Ad(k), Bd(k))` stack for an
+  n-mass chain with parameters that vary over the record.
+- [`util_msd_nl.m`](util_msd_nl.m) — RK4 simulator for an n-mass chain with
+  Duffing-style cubic stiffness.
 
 ## Running All Examples
 
-To run all examples and verify they execute without error:
+Run the full suite from MATLAB or Octave:
 
 ```matlab
-run('examples/runAllExamples.m')
+run('matlab/examples/runAllExamples.m')
 ```
 
-This runner script is also used in CI to validate examples on both MATLAB and GNU Octave.
+The runner discovers every `example*.m` file by glob (no hardcoded manifest),
+adds the `sid/` functions to the path, runs each example, and reports the
+number of completed sections per file. This runner is also used in CI to
+validate examples on both MATLAB and GNU Octave.
+
+## Contributing
+
+See [`../CONTRIBUTING.md`](../CONTRIBUTING.md) for MATLAB function header
+conventions, example-script templates, and auto-discovery rules. New examples
+must conform to the binding specification in
+[`../../spec/EXAMPLES.md`](../../spec/EXAMPLES.md) — add a new entry there
+first (minor version bump), then implement both Python and MATLAB versions.
