@@ -282,6 +282,15 @@ table.
 
 ## Example and Test Scripts
 
+> **⚠ Read this first.** The binding contract for every example is
+> [`spec/EXAMPLES.md`](../spec/EXAMPLES.md). It defines the physical plant
+> catalog, the `util_msd*` helper API, and — for every example — the required
+> pedagogical sections, the `sid*` call graph, and the required plots and
+> prints. MATLAB scripts and Python notebooks are parallel implementations of
+> the same spec. If you are porting, adding, or modifying an example, start
+> there; the conventions in this file cover only the MATLAB-specific script
+> mechanics.
+
 Example scripts (`examples/`) and test scripts (`tests/`) use `%%` section
 markers and do not require the full function header template. They should
 have a brief `%%` title and description at the top.

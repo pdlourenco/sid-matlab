@@ -64,7 +64,23 @@ sidSpectrumPlot(result_ts);
 See the [examples guide](examples/README.md) for more usage patterns, including
 ETFE, frequency-dependent resolution, MIMO, time-varying maps, spectrograms,
 LTV state-space identification, multi-trajectory ensemble averaging, and
-partial-observation Output-COSMIC.
+partial-observation Output-COSMIC. Every example is built on a physical
+spring-mass-damper plant from the shared catalog defined in
+[`spec/EXAMPLES.md`](../spec/EXAMPLES.md):
+
+| Example | Plant | Functions |
+|---|---|---|
+| `exampleSISO` | 1-DoF SMD (`m=1, k=100, c=2`, `ω_n=10 rad/s`) | `sidFreqBT`, `sidBodePlot`, `sidDetrend`, `sidResidual`, `sidCompare` |
+| `exampleETFE` | Same 1-DoF SMD as `exampleSISO` | `sidFreqETFE`, `sidBodePlot`, `sidSpectrumPlot` |
+| `exampleFreqDepRes` | 3-mass chain with three closely-spaced modes | `sidFreqBT`, `sidFreqBTFDR`, `sidBodePlot` |
+| `exampleCoherence` | 2-mass chain with colored force disturbance at mass 2 | `sidFreqBT`, `sidBodePlot` (with coherence) |
+| `exampleMethodComparison` | Same 1-DoF SMD as `exampleSISO` | `sidFreqBT`, `sidFreqBTFDR`, `sidFreqETFE`, `sidCompare` |
+| `exampleMIMO` | 2-mass chain, 2-in/2-out | `sidFreqBT` (MIMO mode) |
+| `exampleFreqMap` | 2-mass LTI + continuous/discrete LTV + Duffing hardening SDOF | `sidFreqMap`, `sidMapPlot` |
+| `exampleSpectrogram` | SDOF (`ω_n ≈ 32 Hz`) driven by a 20→60 Hz chirp force | `sidSpectrogram`, `sidSpectrogramPlot` |
+| `exampleLTVdisc` | 1-DoF LTV (ramping stiffness) **plus** Duffing linearization | `sidLTVdisc`, `sidLTVdiscTune`, `sidLTVdiscFrozen` |
+| `exampleMultiTrajectory` | 2-mass ensemble + step-change LTV + chirp-in-noise + LTV/`sidFreqMap` consistency | `sidFreqBT`, `sidFreqMap`, `sidSpectrogram`, `sidLTVdisc` |
+| `exampleOutputCOSMIC` | 2-mass chain, position-only measurements (velocities hidden) | `sidFreqBT`, `sidModelOrder`, `sidLTVdiscIO` |
 
 ## Function Reference
 
