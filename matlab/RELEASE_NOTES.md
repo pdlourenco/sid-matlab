@@ -12,7 +12,7 @@ System Identification or Signal Processing Toolboxes.
 
 The toolbox covers two complementary paths: a frequency-domain path built on
 Blackman-Tukey spectral analysis (Ljung, 1999), and a state-space path built
-on the COSMIC algorithm — a closed-form, O(N)-complexity solver for discrete
+on the COSMIC (Closed-form data-driven linear time-varying SysteM IdentifiCation) algorithm — a closed-form, O(N)-complexity solver for discrete
 linear time-varying system identification (Carvalho et al., 2022). Both paths
 support SISO, MIMO, time series, and multi-trajectory data through a unified
 API.
@@ -29,13 +29,10 @@ sid-v0.1.0-matlab/
 ├── LICENSE                             # MIT License
 ├── spec/
 │   ├── SPEC.md                         # Full algorithm specification
-│   ├── EXAMPLES.md                     # Example-suite specification
-│   └── cosmic/                         # COSMIC theory documents
+│   └── EXAMPLES.md                     # Example-suite specification
 └── matlab/
     ├── README.md                       # Installation, quick start, function reference
-    ├── CONTRIBUTING.md                 # MATLAB-specific contribution guide
     ├── sidInstall.m                    # Setup script (adds sid/ to path)
-    ├── miss_hit.cfg                    # MISS_HIT linter configuration
     ├── sid/                            # Public API
     │   ├── sidFreqBT.m                 # Blackman-Tukey spectral estimation
     │   ├── sidFreqBTFDR.m              # BT with frequency-dependent resolution
@@ -77,26 +74,23 @@ sid-v0.1.0-matlab/
     │       ├── sidLTVblkTriSolve.m             # Generic block tridiagonal solver
     │       ├── sidLTVevaluateCost.m            # COSMIC cost function evaluation
     │       └── sidLTVuncertaintyBackwardPass.m # Posterior covariance recursion
-    ├── examples/
-    │   ├── README.md                   # Examples guide
-    │   ├── runAllExamples.m            # Run all examples
-    │   ├── util_msd.m                  # ZOH discretisation of n-mass SMD chain
-    │   ├── util_msd_ltv.m              # Per-step (Ad(k), Bd(k)) for LTV SMD chain
-    │   ├── util_msd_nl.m               # RK4 simulator for Duffing-style nonlinear SMD
-    │   ├── exampleSISO.m               # Basic SISO frequency response
-    │   ├── exampleETFE.m               # Empirical transfer function
-    │   ├── exampleFreqDepRes.m         # Frequency-dependent resolution
-    │   ├── exampleCoherence.m          # Coherence analysis
-    │   ├── exampleMethodComparison.m   # BT vs. BTFDR vs. ETFE
-    │   ├── exampleMIMO.m                # MIMO estimation
-    │   ├── exampleFreqMap.m             # Time-varying frequency maps
-    │   ├── exampleSpectrogram.m         # Spectrogram
-    │   ├── exampleLTVdisc.m             # LTV identification with COSMIC
-    │   ├── exampleMultiTrajectory.m     # Multi-trajectory ensemble averaging
-    │   └── exampleOutputCOSMIC.m        # Partial-observation identification
-    └── tests/                           # Test suite (MATLAB + Octave in CI)
-        ├── runAllTests.m
-        └── test_*.m
+    └── examples/
+        ├── README.md                   # Examples guide
+        ├── runAllExamples.m            # Run all examples
+        ├── util_msd.m                  # ZOH discretisation of n-mass SMD chain
+        ├── util_msd_ltv.m              # Per-step (Ad(k), Bd(k)) for LTV SMD chain
+        ├── util_msd_nl.m               # RK4 simulator for Duffing-style nonlinear SMD
+        ├── exampleSISO.m               # Basic SISO frequency response
+        ├── exampleETFE.m               # Empirical transfer function
+        ├── exampleFreqDepRes.m         # Frequency-dependent resolution
+        ├── exampleCoherence.m          # Coherence analysis
+        ├── exampleMethodComparison.m   # BT vs. BTFDR vs. ETFE
+        ├── exampleMIMO.m                # MIMO estimation
+        ├── exampleFreqMap.m             # Time-varying frequency maps
+        ├── exampleSpectrogram.m         # Spectrogram
+        ├── exampleLTVdisc.m             # LTV identification with COSMIC
+        ├── exampleMultiTrajectory.m     # Multi-trajectory ensemble averaging
+        └── exampleOutputCOSMIC.m        # Partial-observation identification
 ```
 
 ## Installation
