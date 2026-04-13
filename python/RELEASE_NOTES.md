@@ -13,7 +13,8 @@ CI against JSON reference vectors produced by the MATLAB port.
 
 The toolbox covers two complementary paths: a frequency-domain path built on
 Blackman-Tukey spectral analysis (Ljung, 1999), and a state-space path built
-on the COSMIC algorithm — a closed-form, O(N)-complexity solver for discrete
+on the COSMIC (Closed-form data-driven linear time-varying SysteM
+IdentifiCation) algorithm — a closed-form, O(N)-complexity solver for discrete
 linear time-varying system identification (Carvalho et al., 2022). Both paths
 support SISO, MIMO, time series, and multi-trajectory data through a unified
 API.
@@ -30,8 +31,7 @@ sid-v0.1.0-python/
 ├── LICENSE                                # MIT License
 ├── spec/
 │   ├── SPEC.md                            # Full algorithm specification
-│   ├── EXAMPLES.md                        # Example-suite specification
-│   └── cosmic/                            # COSMIC theory documents
+│   └── EXAMPLES.md                        # Example-suite specification
 ├── testdata/                              # Cross-language reference vectors (JSON)
 ├── binder/                                # MyBinder environment definition
 │   ├── runtime.txt                        # python-3.11
@@ -39,7 +39,6 @@ sid-v0.1.0-python/
 │   └── postBuild                          # pip install -e ./python[plot]
 └── python/
     ├── README.md                          # Installation, quick start, function reference
-    ├── CONTRIBUTING.md                    # Python-specific contribution guide
     ├── pyproject.toml                     # Packaging metadata (sid-toolbox 0.1.0)
     ├── sid/                               # Public API
     │   ├── __init__.py                    # Public re-exports, __version__ = "0.1.0"
@@ -75,31 +74,26 @@ sid-v0.1.0-python/
     │       ├── freq_domain_sim.py         #   Frequency-domain model simulation
     │       ├── estimate_noise_cov.py      #   Noise covariance estimation
     │       ├── extract_std.py             #   Standard deviation extraction
-    │       ├── test_msd.py                #   Mass-spring-damper test system
     │       ├── ltv_build_data_matrices.py #   COSMIC data matrix construction (+ var-len)
     │       ├── ltv_build_block_terms.py   #   Block tridiagonal term assembly
     │       ├── ltv_cosmic_solve.py        #   COSMIC forward-backward solve
     │       ├── ltv_blk_tri_solve.py       #   Generic block tridiagonal solver
     │       ├── ltv_evaluate_cost.py       #   COSMIC cost function evaluation
     │       └── ltv_uncertainty_backward_pass.py # Posterior covariance recursion
-    ├── examples/                          # Jupyter notebooks
-    │   ├── README.md                      # Examples guide
-    │   ├── util_msd.py                    # SMD helpers (ZOH, LTV stack, Duffing RK4)
-    │   ├── example_siso.ipynb             # Basic SISO frequency response
-    │   ├── example_etfe.ipynb             # Empirical transfer function
-    │   ├── example_freq_dep_res.ipynb     # Frequency-dependent resolution
-    │   ├── example_coherence.ipynb        # Coherence analysis
-    │   ├── example_method_comparison.ipynb # BT vs. BTFDR vs. ETFE
-    │   ├── example_mimo.ipynb             # MIMO estimation
-    │   ├── example_freq_map.ipynb         # Time-varying frequency maps
-    │   ├── example_spectrogram.ipynb      # Spectrogram
-    │   ├── example_ltv_disc.ipynb         # LTV identification with COSMIC
-    │   ├── example_multi_trajectory.ipynb # Multi-trajectory ensemble averaging
-    │   └── example_output_cosmic.ipynb    # Partial-observation identification
-    └── tests/                             # pytest suite (Python 3.10–3.13 in CI)
-        ├── conftest.py
-        ├── test_cross_validation.py       # MATLAB ↔ Python numerical equivalence
-        └── test_*.py
+    └── examples/                          # Jupyter notebooks
+        ├── README.md                      # Examples guide
+        ├── util_msd.py                    # SMD helpers (ZOH, LTV stack, Duffing RK4)
+        ├── example_siso.ipynb             # Basic SISO frequency response
+        ├── example_etfe.ipynb             # Empirical transfer function
+        ├── example_freq_dep_res.ipynb     # Frequency-dependent resolution
+        ├── example_coherence.ipynb        # Coherence analysis
+        ├── example_method_comparison.ipynb # BT vs. BTFDR vs. ETFE
+        ├── example_mimo.ipynb             # MIMO estimation
+        ├── example_freq_map.ipynb         # Time-varying frequency maps
+        ├── example_spectrogram.ipynb      # Spectrogram
+        ├── example_ltv_disc.ipynb         # LTV identification with COSMIC
+        ├── example_multi_trajectory.ipynb # Multi-trajectory ensemble averaging
+        └── example_output_cosmic.ipynb    # Partial-observation identification
 ```
 
 ## Installation
@@ -284,19 +278,6 @@ tab-completable fields accessed via dot notation (`result.response`,
 | NumPy | 1.22 | Required |
 | SciPy | 1.8 | Required |
 | Matplotlib | 3.5 | Optional (`sid-toolbox[plot]`) — needed for plotting functions and example notebooks |
-
-## Testing
-
-```bash
-# Unit tests
-pytest python/tests/ -v
-
-# Notebook execution (requires nbmake)
-pytest --nbmake python/examples/ -v
-
-# Cross-language validation (testdata/*.json reference vectors)
-pytest python/tests/test_cross_validation.py -v
-```
 
 ## Out of Scope for this version
 

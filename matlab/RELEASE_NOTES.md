@@ -66,7 +66,6 @@ sid-v0.1.0-matlab/
     │       ├── sidFreqDomainSim.m      #   Frequency-domain model simulation
     │       ├── sidEstimateNoiseCov.m   #   Noise covariance estimation
     │       ├── sidExtractStd.m         #   Standard deviation extraction
-    │       ├── sidTestMSD.m            #   Mass-spring-damper test system
     │       ├── sidLTVbuildDataMatrices.m       # COSMIC data matrix construction
     │       ├── sidLTVbuildDataMatricesVarLen.m # Variable-length trajectory support
     │       ├── sidLTVbuildBlockTerms.m         # Block tridiagonal term assembly
