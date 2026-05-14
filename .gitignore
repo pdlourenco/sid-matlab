@@ -9,3 +9,9 @@ dist/
 build/
 *.egg
 .pytest_cache/
+
+# Docs build artefacts
+site/
+.cache/
+_matlab_api_out/
+_matlab_examples_out/
